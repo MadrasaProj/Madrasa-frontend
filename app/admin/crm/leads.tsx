@@ -1,589 +1,187 @@
-import { SkeletonList, DetailSkeleton } from "@/components/ui/Skeleton";
-import { toast as sonnerToast } from "sonner";
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { CrmSubNav } from "@/components/crm/CrmSubNav";
+import { useAuthStore } from "@/store/auth";
 import {
   listLeads,
   getLead,
   createLead,
   updateLead,
   deleteLead,
+  bulkLeadAction,
+  assignLead,
   logActivity,
+  updateActivity,
+  deleteActivity,
   scheduleDemo,
   provisionTrial,
   convertLead,
   listDistricts,
-  bulkImportLeads,
-  updateActivity,
-  deleteActivity,
-  updateFollowUpDate,
   listInternalUsers,
-  bulkLeadAction,
+  bulkImportLeads,
+  updateFollowUpDate,
   type LeadListItem,
   type LeadDetail,
   type DistrictItem,
-  type BulkImportLeadItem,
   type InternalUserItem,
-  type BulkLeadActionPayload,
 } from "@/lib/crm-api";
-import { useAuthStore } from "@/store/auth";
-import { DashboardLayout } from "@/components/DashboardLayout";
-import { CrmSubNav } from "@/components/crm/CrmSubNav";
-import { ImportModal, type ImportConfig } from "@/components/ui/ImportModal";
+import {
+  LEAD_STATUSES,
+  LEAD_STATUS_LABELS,
+  STAGE_ICONS,
+  DAILY_WORK_STAGE_ORDER,
+  type LeadStatus,
+  type LeadSortOption,
+} from "@/components/crm/crm-types";
+import {
+  calculateLeadSmartPriority,
+  getFollowUpStatus,
+  isLeadAssignedToUser,
+  isLeadUnassigned,
+  formatLocalDateForInput,
+} from "@/components/crm/crm-utils";
+import { LeadToolbar } from "@/components/crm/LeadToolbar";
+import { LeadCard } from "@/components/crm/LeadCard";
+import { LeadDetailView } from "@/components/crm/LeadDetailView";
+import { LeadFormDrawer, type LeadFormData } from "@/components/crm/LeadFormDrawer";
+import { LeadQuickAssignModal } from "@/components/crm/LeadQuickAssignModal";
+import { LeadBulkModal, type BulkModalType } from "@/components/crm/LeadBulkModal";
+import { createCrmImportConfig } from "@/components/crm/crm-import-config";
+import { ImportModal } from "@/components/ui/ImportModal";
 import {
   Plus,
-  Search,
-  Phone,
-  MessageSquare,
-  Play,
-  CheckCircle,
-  X,
-  Loader2,
-  DollarSign,
-  Calendar,
-  Users,
-  Award,
-  Trash,
-  Clock,
-  ChevronRight,
-  AlertTriangle,
-  Copy,
-  Check,
-  RotateCcw,
-  Pencil,
-  CalendarClock,
-  Building2,
   Upload,
+  Users,
   Sparkles,
-  Zap,
-  TrendingUp,
+  CalendarClock,
+  Trash,
   ArrowLeft,
-  ChevronDown,
-  ChevronUp,
-  ChevronLeft,
-  ExternalLink,
-  ShieldCheck,
-  CheckCircle2,
-  SlidersHorizontal,
-  ArrowUpDown,
-  Flame,
-  History,
+  Pencil,
   Inbox,
-  Filter,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-// ─── Pipeline stage config ────────────────────────────────────────────────────
-export type LeadSortOption =
-  | "SMART_PRIORITY"
-  | "URGENT"
-  | "FOLLOWUP_ASC"
-  | "FOLLOWUP_DESC"
-  | "LAST_FOLLOWUP_ASC"
-  | "LAST_FOLLOWUP_DESC"
-  | "STATUS_CHANGED_DESC"
-  | "STATUS_CHANGED_ASC"
-  | "SCORE_DESC"
-  | "STUDENTS"
-  | "NEWEST"
-  | "OLDEST"
-  | "NAME";
-
-export interface SmartPriorityResult {
-  score: number;
-  urgencyLevel: "CRITICAL" | "HIGH" | "MEDIUM" | "NORMAL" | "CLOSED";
-  primaryReason: string;
-  badgeColor: string;
-  isOverdue: boolean;
-  isToday: boolean;
-  isUntreated: boolean;
-  isStale: boolean;
-  daysSinceLastContact: number;
-  dueDaysDiff: number | null;
-}
-
-export function calculateLeadSmartPriority(
-  lead: LeadListItem,
-  myIdentifiers?: Set<string>,
-  explicitUserId?: string
-): SmartPriorityResult {
-  if (lead.status === "WON" || lead.status === "LOST") {
-    return {
-      score: -1000,
-      urgencyLevel: "CLOSED",
-      primaryReason: lead.status === "WON" ? "Account Won" : "Lead Closed",
-      badgeColor: "bg-gray-100 text-gray-500 border-gray-200",
-      isOverdue: false,
-      isToday: false,
-      isUntreated: false,
-      isStale: false,
-      daysSinceLastContact: 0,
-      dueDaysDiff: null,
-    };
-  }
-
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
-  // Follow-up due calculation
-  let dueDaysDiff: number | null = null;
-  let isOverdue = false;
-  let isToday = false;
-
-  if (lead.nextFollowUpDate) {
-    const fDate = new Date(lead.nextFollowUpDate);
-    fDate.setHours(0, 0, 0, 0);
-    dueDaysDiff = Math.round((fDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (dueDaysDiff < 0) isOverdue = true;
-    else if (dueDaysDiff === 0) isToday = true;
-  }
-
-  // Last touch / follow-up calculation
-  let lastTouchDate: Date | null = null;
-  if (lead.timeline && lead.timeline.length > 0) {
-    lastTouchDate = new Date(lead.timeline[0].createdAt);
-  }
-
-  const daysSinceLastContact = lastTouchDate
-    ? Math.floor((now.getTime() - lastTouchDate.getTime()) / (1000 * 60 * 60 * 24))
-    : -1;
-
-  const isUntreated = daysSinceLastContact === -1 && (!lead.timeline || lead.timeline.length === 0);
-  const isStale = daysSinceLastContact >= 7;
-
-  let score = 50;
-  let primaryReason = "Standard Follow-up";
-  let urgencyLevel: "CRITICAL" | "HIGH" | "MEDIUM" | "NORMAL" = "NORMAL";
-  let badgeColor = "bg-blue-50 text-blue-700 border-blue-200";
-
-  // Check if lead is assigned to current user
-  let isAssignedToMe = false;
-  let isUnassigned = false;
-
-  if (myIdentifiers && myIdentifiers.size > 0) {
-    if (lead.contributors && lead.contributors.length > 0) {
-      for (const c of lead.contributors) {
-        const cId = (c.userId || c.user?.id || "").toLowerCase().trim();
-        const cName = (c.user?.name || "").toLowerCase().trim();
-        const cUsername = ((c.user as any)?.username || "").toLowerCase().trim();
-        const cEmail = ((c.user as any)?.email || "").toLowerCase().trim();
-
-        if (explicitUserId && cId && cId === explicitUserId.toLowerCase().trim()) {
-          isAssignedToMe = true;
-          break;
-        }
-        if (cId && myIdentifiers.has(cId)) {
-          isAssignedToMe = true;
-          break;
-        }
-        if (cName && myIdentifiers.has(cName)) {
-          isAssignedToMe = true;
-          break;
-        }
-        if (cUsername && myIdentifiers.has(cUsername)) {
-          isAssignedToMe = true;
-          break;
-        }
-        if (cEmail && myIdentifiers.has(cEmail)) {
-          isAssignedToMe = true;
-          break;
-        }
-      }
-    }
-
-    if (!isAssignedToMe) {
-      const directId = ((lead as any).assignedUserId || (lead as any).assignedTo || "").toLowerCase().trim();
-      if (directId && (myIdentifiers.has(directId) || (explicitUserId && directId === explicitUserId.toLowerCase().trim()))) {
-        isAssignedToMe = true;
-      }
-    }
-
-    if (!isAssignedToMe && (!lead.contributors || lead.contributors.length === 0) && lead.createdBy) {
-      if (myIdentifiers.has(lead.createdBy.toLowerCase().trim())) {
-        isAssignedToMe = true;
-      }
-    }
-
-    const hasValidContributor = Boolean(
-      lead.contributors &&
-      lead.contributors.some((c) => Boolean(c.userId || c.user?.id || (c.user?.name && c.user.name.trim())))
-    );
-    const hasDirectAssignee = Boolean((lead as any).assignedUserId || (lead as any).assignedTo);
-    isUnassigned = !hasValidContributor && !hasDirectAssignee;
-  }
-
-  // Urgency & Scheduling scoring
-  if (isOverdue) {
-    const daysOverdue = Math.abs(dueDaysDiff!);
-    score += 110 + Math.min(daysOverdue * 6, 50);
-    urgencyLevel = "CRITICAL";
-    primaryReason = isAssignedToMe
-      ? `🚨 Your Account • Overdue ${daysOverdue}d`
-      : `🚨 Overdue by ${daysOverdue}d`;
-    badgeColor = "bg-rose-100 text-rose-800 border-rose-300";
-  } else if (isToday) {
-    score += 95;
-    urgencyLevel = "HIGH";
-    primaryReason = isAssignedToMe ? "⏱️ Your Account • Due Today" : "⏱️ Follow-up Due Today";
-    badgeColor = "bg-amber-100 text-amber-800 border-amber-300";
-  } else if (dueDaysDiff === 1) {
-    score += 70;
-    urgencyLevel = "MEDIUM";
-    primaryReason = isAssignedToMe ? "📅 Your Account • Due Tomorrow" : "📅 Due Tomorrow";
-    badgeColor = "bg-indigo-50 text-indigo-700 border-indigo-200";
-  } else if (!lead.nextFollowUpDate) {
-    if (isUntreated) {
-      score += 90;
-      urgencyLevel = "HIGH";
-      primaryReason = isAssignedToMe ? "⚡ Your Account • Untreated (Call)" : "⚡ Untreated Lead (Needs Call)";
-      badgeColor = "bg-teal-100 text-teal-800 border-teal-300";
-    } else if (isStale) {
-      score += 80;
-      urgencyLevel = "HIGH";
-      primaryReason = isAssignedToMe
-        ? `⚠️ Your Account • Stale ${daysSinceLastContact}d`
-        : `⚠️ Stale: Untouched ${daysSinceLastContact}d`;
-      badgeColor = "bg-amber-100 text-amber-800 border-amber-300";
-    } else {
-      score += 45;
-      primaryReason = isAssignedToMe ? "⚠️ Your Account • Needs Follow-up Date" : "⚠️ Needs Follow-up Date";
-      badgeColor = "bg-slate-100 text-slate-700 border-slate-300";
-    }
-  }
-
-  // If lead is untreated (no timeline at all)
-  if (isUntreated && !isOverdue && !isToday) {
-    score += 45;
-    urgencyLevel = "HIGH";
-    primaryReason = isAssignedToMe ? "⚡ Your Account • Never Contacted" : "⚡ Untreated Lead (Never Contacted)";
-    badgeColor = "bg-teal-100 text-teal-800 border-teal-300";
-  }
-
-  // Personal Assignee Priority Boost (+65 pts)
-  if (isAssignedToMe) {
-    score += 65;
-  } else if (isUnassigned) {
-    score += 35;
-    if (!isOverdue && !isToday) {
-      primaryReason += " • ⚠️ Unassigned (Claim)";
-    }
-  }
-
-  // Quality & Volume weighting
-  if (lead.score === "HOT") {
-    score += 35;
-    if (!isOverdue) {
-      primaryReason += " • 🔥 Hot Deal";
-    }
-  } else if (lead.score === "WARM") {
-    score += 20;
-  }
-
-  // Institutional Student Count (deal size weighting)
-  if ((lead.studentCount || 0) >= 400) {
-    score += 30;
-    if (urgencyLevel !== "CRITICAL") {
-      primaryReason += ` • 💎 High Volume (${lead.studentCount} stu)`;
-    }
-  } else if ((lead.studentCount || 0) >= 200) {
-    score += 15;
-  }
-
-  // Stage weighting
-  if (lead.status === "QUALITY_LEAD" || lead.status === "NEGOTIATION" || lead.status === "TRIAL_SHARED") {
-    score += 25;
-  }
-
-  return {
-    score,
-    urgencyLevel,
-    primaryReason,
-    badgeColor,
-    isOverdue,
-    isToday,
-    isUntreated,
-    isStale,
-    daysSinceLastContact,
-    dueDaysDiff,
-  };
-}
-
-export function formatRelativeTime(dateStr?: string | null): string {
-  if (!dateStr) return "Never";
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHours = Math.floor(diffMin / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffSec < 60) return "Just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-}
-
-export const OUTCOME_DISPOSITIONS = [
-  { label: "Interested", icon: "⭐", text: "Interested in Smart Madrasa. Discussed setup requirements." },
-  { label: "Follow-up Needed", icon: "🔄", text: "Discussion had; follow-up requested for later." },
-  { label: "No Answer / Busy", icon: "📵", text: "Call unanswered / line busy. Scheduled retry." },
-  { label: "WhatsApp Info Sent", icon: "💬", text: "Sent feature brochures & intro via WhatsApp." },
-  { label: "Demo Requested", icon: "🖥️", text: "Demo requested for committee members / Usthad." },
-  { label: "Pricing Discussed", icon: "💰", text: "Discussed fee plans & student count packages." },
-  { label: "Not Interested Right Now", icon: "⏸️", text: "Not interested currently; review in future." },
-];
-
-export const LEAD_STATUS_LABELS: Record<string, string> = {
-  NEW: "New Lead",
-  CONTACTED: "Contacted",
-  INTERESTED: "Interested",
-  FOLLOW_UP: "Follow-up",
-  QUALITY_LEAD: "Quality Lead",
-  TRIAL_SHARED: "Trial Shared",
-  OFFLINE_DEMO_SCHEDULED: "Demo Scheduled",
-  OFFLINE_DEMO_COMPLETED: "Demo Completed",
-  NEGOTIATION: "Negotiation",
-  DATA_COLLECTION: "Data Collection",
-  PAYMENT_PENDING: "Payment Pending",
-  WON: "Won",
-  LOST: "Lost",
-  ON_HOLD: "On Hold",
-  // Backward compatibility
-  DEMO_SCHEDULED: "Demo Scheduled",
-  DEMO_COMPLETED: "Demo Completed",
-  TRIAL_CREATED: "Trial Shared",
-};
-
-export const SHORT_STATUS_LABELS: Record<string, string> = {
-  NEW: "New",
-  CONTACTED: "Contacted",
-  INTERESTED: "Interested",
-  FOLLOW_UP: "Follow-up",
-  QUALITY_LEAD: "Quality",
-  TRIAL_SHARED: "Trial",
-  OFFLINE_DEMO_SCHEDULED: "Demo Sched",
-  OFFLINE_DEMO_COMPLETED: "Demo Done",
-  NEGOTIATION: "Negotiation",
-  DATA_COLLECTION: "Data Col",
-  PAYMENT_PENDING: "Payment",
-  WON: "Won",
-  LOST: "Lost",
-  ON_HOLD: "On Hold",
-  DEMO_SCHEDULED: "Demo Sched",
-  DEMO_COMPLETED: "Demo Done",
-  TRIAL_CREATED: "Trial",
-};
-
-export const LEAD_STATUSES = [
-  "NEW",
-  "CONTACTED",
-  "INTERESTED",
-  "FOLLOW_UP",
-  "QUALITY_LEAD",
-  "TRIAL_SHARED",
-  "OFFLINE_DEMO_SCHEDULED",
-  "OFFLINE_DEMO_COMPLETED",
-  "NEGOTIATION",
-  "DATA_COLLECTION",
-  "PAYMENT_PENDING",
-  "WON",
-  "LOST",
-  "ON_HOLD",
-] as const;
-
-export type LeadStatus = (typeof LEAD_STATUSES)[number];
-
-export function formatLocalDateForInput(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-export function normalizeLeadStatus(status?: string | null): string {
-  if (!status) return "NEW";
-  if (status === "TRIAL_CREATED") return "TRIAL_SHARED";
-  if (status === "DEMO_SCHEDULED") return "OFFLINE_DEMO_SCHEDULED";
-  if (status === "DEMO_COMPLETED") return "OFFLINE_DEMO_COMPLETED";
-  return status;
-}
-
-export function getLeadFollowUpCategory(dateStr?: string | null): "OVERDUE" | "TODAY" | "FUTURE" | "NONE" {
-  if (!dateStr) return "NONE";
-  const target = new Date(dateStr);
-  target.setHours(0, 0, 0, 0);
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const diffDays = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return "OVERDUE";
-  if (diffDays === 0) return "TODAY";
-  return "FUTURE";
-}
-
-const PIPELINE_STEPS = [
-  { key: "intake", label: "Follow-up", statuses: ["NEW", "CONTACTED", "INTERESTED", "FOLLOW_UP"] },
-  { key: "qualified", label: "Quality Lead", statuses: ["QUALITY_LEAD"] },
-  { key: "trial", label: "Trial", statuses: ["TRIAL_SHARED", "TRIAL_CREATED"] },
-  {
-    key: "demo",
-    label: "Demo",
-    statuses: ["OFFLINE_DEMO_SCHEDULED", "OFFLINE_DEMO_COMPLETED", "DEMO_SCHEDULED", "DEMO_COMPLETED"],
-  },
-  { key: "closing", label: "Negotiation", statuses: ["NEGOTIATION", "DATA_COLLECTION", "PAYMENT_PENDING"] },
-  { key: "won", label: "Won", statuses: ["WON"] },
-];
-
-const ACTIVITY_TYPES = [
-  { value: "CALL", label: "📞 Phone Call" },
-  { value: "WHATSAPP", label: "💬 WhatsApp Message" },
-  { value: "MEETING", label: "🤝 Committee Meeting" },
-  { value: "SITE_VISIT", label: "🏫 Campus / Site Visit" },
-  { value: "PROPOSAL_SENT", label: "📄 Proposal / Quote Sent" },
-];
-
-const LEAD_SOURCES = [
-  "REFERRAL",
-  "WHATSAPP",
-  "FACEBOOK",
-  "WEBSITE",
-  "DIRECT_VISIT",
-  "WEBINAR",
-  "CAMPAIGN",
-  "COLD_OUTREACH",
-  "EXISTING_CUSTOMER",
-];
-
-const CONTACT_ROLES = ["Sadr Usthad", "Secretary", "President", "Manager", "Muhtamim", "Other"];
-
-const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-slate-100 text-slate-800 border-slate-200",
-  CONTACTED: "bg-blue-50 text-blue-800 border-blue-200",
-  INTERESTED: "bg-primary-50 text-primary-800 border-primary-200",
-  FOLLOW_UP: "bg-cyan-50 text-cyan-800 border-cyan-200",
-  QUALITY_LEAD: "bg-teal-50 text-teal-800 border-teal-300",
-  TRIAL_SHARED: "bg-amber-50 text-amber-800 border-amber-200",
-  OFFLINE_DEMO_SCHEDULED: "bg-violet-50 text-violet-800 border-violet-200",
-  OFFLINE_DEMO_COMPLETED: "bg-indigo-50 text-indigo-800 border-indigo-200",
-  NEGOTIATION: "bg-orange-50 text-orange-800 border-orange-200",
-  DATA_COLLECTION: "bg-purple-50 text-purple-800 border-purple-200",
-  PAYMENT_PENDING: "bg-rose-50 text-rose-800 border-rose-200",
-  WON: "bg-primary-100 text-primary-900 border-primary-300",
-  LOST: "bg-red-50 text-red-800 border-red-200",
-  ON_HOLD: "bg-gray-100 text-gray-700 border-gray-200",
-  // Compatibility
-  DEMO_SCHEDULED: "bg-violet-50 text-violet-800 border-violet-200",
-  DEMO_COMPLETED: "bg-indigo-50 text-indigo-800 border-indigo-200",
-  TRIAL_CREATED: "bg-amber-50 text-amber-800 border-amber-200",
-};
-
-const SCORE_COLORS: Record<string, string> = {
-  COLD: "bg-slate-100 text-slate-700 border-slate-200",
-  WARM: "bg-amber-50 text-amber-800 border-amber-200",
-  HOT: "bg-orange-50 text-orange-800 border-orange-200",
-  READY_TO_CLOSE: "bg-primary-50 text-primary-900 border-primary-200",
-};
-
-export default function CrmLeadsPage() {
+export default function LeadsCrmPage() {
   const { accessToken, user } = useAuthStore();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
 
+  // Core Data
   const [leads, setLeads] = useState<LeadListItem[]>([]);
-  const [districts, setDistricts] = useState<DistrictItem[]>([]);
-  const [teamUsers, setTeamUsers] = useState<InternalUserItem[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<LeadDetail | null>(null);
+  const [teamUsers, setTeamUsers] = useState<InternalUserItem[]>([]);
+  const [districts, setDistricts] = useState<DistrictItem[]>([]);
 
+  // Filter States
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const staticDataLoaded = useRef(false);
-
   const [activeStage, setActiveStage] = useState<string>("ALL");
-  const [smartPreset, setSmartPreset] = useState<
-    | "ALL"
-    | "AI_PRIORITY"
-    | "OVERDUE"
-    | "TODAY"
-    | "UNTREATED"
-    | "STALE"
-    | "HOT_WARM"
-    | "QUALITY"
-    | "ACTIVE_TRIALS"
-    | "NO_FOLLOWUP"
-  >("ALL");
+  const [smartPreset, setSmartPreset] = useState<string>("ALL");
   const [selectedDistrict, setSelectedDistrict] = useState<string>("ALL");
-  const [selectedAssignee, setSelectedAssignee] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const param = params.get("assignee");
-      if (param) {
-        const upper = param.toUpperCase();
-        if (upper === "ALL" || upper === "UNASSIGNED" || upper === "ME") return upper;
-        return param;
-      }
-    }
-    return "ME";
-  });
+  const [selectedAssignee, setSelectedAssignee] = useState<"ME" | "ALL" | "UNASSIGNED">("ME");
   const [sortBy, setSortBy] = useState<LeadSortOption>("SMART_PRIORITY");
-  const [showMobileDetail, setShowMobileDetail] = useState(false);
 
-  // Advanced Filters State
-  const [dueDateFilter, setDueDateFilter] = useState<
-    "ALL" | "OVERDUE" | "TODAY" | "TOMORROW" | "THIS_WEEK" | "NEXT_WEEK" | "CUSTOM"
-  >("ALL");
+  // Granular Filters
+  const [dueDateFilter, setDueDateFilter] = useState<string>("ALL");
   const [dueDateFrom, setDueDateFrom] = useState<string>("");
   const [dueDateTo, setDueDateTo] = useState<string>("");
-  const [lastContactedFilter, setLastContactedFilter] = useState<
-    "ALL" | "UNTREATED" | "STALE_7D" | "STALE_3D" | "RECENT_48H"
-  >("ALL");
+  const [lastContactedFilter, setLastContactedFilter] = useState<string>("ALL");
   const [leadScoreFilter, setLeadScoreFilter] = useState<string>("ALL");
-  const [institutionSizeFilter, setInstitutionSizeFilter] = useState<"ALL" | "LARGE" | "MEDIUM" | "SMALL">("ALL");
+  const [institutionSizeFilter, setInstitutionSizeFilter] = useState<string>("ALL");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [isAiQueueCollapsed, setIsAiQueueCollapsed] = useState(false);
 
-  // Pagination State
+  // Pagination & Mobile View
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const pageSize = 20;
+  const [showMobileDetail, setShowMobileDetail] = useState(false);
 
-  // Bulk Actions State
+  // Selection & Bulk
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
-  const [bulkModalType, setBulkModalType] = useState<"ASSIGN" | "STATUS" | "FOLLOW_UP" | "DELETE" | null>(null);
+  const [bulkModalType, setBulkModalType] = useState<BulkModalType>(null);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
-  const [bulkSelectedUserId, setBulkSelectedUserId] = useState<string>("");
-  const [bulkSelectedStatus, setBulkSelectedStatus] = useState<string>("FOLLOW_UP");
-  const [bulkFollowUpDate, setBulkFollowUpDate] = useState<string>("");
-  const [bulkRemarks, setBulkRemarks] = useState<string>("");
+  const [bulkSelectedUserId, setBulkSelectedUserId] = useState("");
+  const [bulkSelectedStatus, setBulkSelectedStatus] = useState<LeadStatus>("FOLLOW_UP");
+  const [bulkFollowUpDate, setBulkFollowUpDate] = useState("");
+  const [bulkRemarks, setBulkRemarks] = useState("");
 
-  // Find current user in teamUsers by ID, Name, or Username/Email
+  // Modals & Drawers
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const [showEditDrawer, setShowEditDrawer] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showQuickAssignModal, setShowQuickAssignModal] = useState(false);
+  const [quickAssignUserId, setQuickAssignUserId] = useState("");
+  const [quickAssignLoading, setQuickAssignLoading] = useState(false);
+  const [formSaving, setFormSaving] = useState(false);
+
+  // UI Feedback
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ text: string; isError?: boolean } | null>(null);
+
+  const toast = useCallback((text: string, isError = false) => {
+    setToastMessage({ text, isError });
+    setTimeout(() => setToastMessage(null), 3500);
+  }, []);
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(label);
+    toast(`Copied: ${text}`);
+    setTimeout(() => setCopiedText(null), 2000);
+  };
+
+  // Bulletproof mobile body scroll lock when mobile detail sheet is open
+  useEffect(() => {
+    if (showMobileDetail) {
+      const scrollY = window.scrollY;
+      const originalPosition = document.body.style.position;
+      const originalTop = document.body.style.top;
+      const originalWidth = document.body.style.width;
+      const originalOverflow = document.body.style.overflow;
+
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+      document.body.style.overflow = "hidden";
+
+      return () => {
+        document.body.style.position = originalPosition;
+        document.body.style.top = originalTop;
+        document.body.style.width = originalWidth;
+        document.body.style.overflow = originalOverflow;
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [showMobileDetail]);
+
+  // Search debounce
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, activeStage, smartPreset, selectedDistrict, selectedAssignee, sortBy]);
+
+  // User Identifiers
   const myTeamUser = useMemo(() => {
     if (!user) return null;
-    const byId = teamUsers.find((u) => u.id === user.id);
-    if (byId) return byId;
-    if (user.name) {
-      const byName = teamUsers.find(
-        (u) => u.name && u.name.trim().toLowerCase() === user.name.trim().toLowerCase()
-      );
-      if (byName) return byName;
-    }
-    const ident = ((user as any).username || (user as any).email || "").toLowerCase();
-    if (ident) {
-      const byIdent = teamUsers.find(
-        (u) => (u as any).username?.toLowerCase() === ident || (u as any).email?.toLowerCase() === ident
-      );
-      if (byIdent) return byIdent;
-    }
-    return null;
+    return (
+      teamUsers.find((u) => u.id === user.id) ||
+      teamUsers.find((u) => u.name && u.name.trim().toLowerCase() === user.name?.trim().toLowerCase()) ||
+      null
+    );
   }, [teamUsers, user]);
 
   const effectiveUserId = myTeamUser?.id || user?.id || "";
-  const currentUserId = effectiveUserId;
 
-  // Comprehensive identifier set for the logged-in user to guarantee accurate assignee matching
   const myIdentifiers = useMemo(() => {
     const set = new Set<string>();
     if (user?.id) set.add(user.id.toLowerCase().trim());
@@ -593,15 +191,11 @@ export default function CrmLeadsPage() {
     if ((user as any)?.email) set.add(String((user as any).email).trim().toLowerCase());
     if (myTeamUser?.id) set.add(myTeamUser.id.toLowerCase().trim());
     if (myTeamUser?.name) set.add(myTeamUser.name.trim().toLowerCase());
-    if (myTeamUser?.username) set.add(myTeamUser.username.trim().toLowerCase());
     return set;
   }, [user, effectiveUserId, myTeamUser]);
 
-  // Guaranteed list of assignable users that includes current user, teamUsers, and any active lead assignees
   const assigneeOptions = useMemo(() => {
     const map = new Map<string, InternalUserItem>();
-
-    // 1. Current logged-in user
     if (effectiveUserId) {
       map.set(effectiveUserId, {
         id: effectiveUserId,
@@ -609,388 +203,88 @@ export default function CrmLeadsPage() {
         role: user?.actorType || "STAFF",
       } as InternalUserItem);
     }
-
-    // 2. Team users fetched from backend
     teamUsers.forEach((u) => {
-      if (u.id && !map.has(u.id)) {
-        map.set(u.id, u);
-      }
+      if (u.id && !map.has(u.id)) map.set(u.id, u);
     });
-
-    // 3. Any assignees found on leads
     leads.forEach((l) => {
       l.contributors?.forEach((c) => {
         const cId = c.userId || c.user?.id;
-        const cName = c.user?.name;
         if (cId && !map.has(cId)) {
           map.set(cId, {
             id: cId,
-            name: cName || "Team Member",
+            name: c.user?.name || "Team Member",
             role: c.role || c.user?.role || "STAFF",
           } as InternalUserItem);
         }
       });
     });
-
     return Array.from(map.values());
   }, [teamUsers, user, effectiveUserId, leads]);
 
-  // Synchronize newLeadForm with default assignee when teamUsers or user loads
-  useEffect(() => {
-    const targetId = effectiveUserId || (assigneeOptions.length > 0 ? assigneeOptions[0].id : "");
-    if (!targetId) return;
-
-    setNewLeadForm((prev) => {
-      if (!prev.contributors[0]?.userId || !assigneeOptions.some((u) => u.id === prev.contributors[0]?.userId)) {
-        return {
-          ...prev,
-          contributors: [{ userId: targetId, percentage: prev.commissionPercentage || 20 }],
-        };
-      }
-      return prev;
-    });
-  }, [effectiveUserId, assigneeOptions]);
-
-  // 350ms search debounce
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  // Reset pagination to page 1 on any filter or search change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearch, activeStage, smartPreset, selectedDistrict, selectedAssignee, sortBy]);
-
-  const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [copiedText, setCopiedText] = useState<string | null>(null);
-
-  // Inline forms in lead detail
-  const [activeSection, setActiveSection] = useState<"followup" | "demo" | "convert" | null>(null);
-
-  // Drawers and modals
-  const [showAddDrawer, setShowAddDrawer] = useState(false);
-  const [showEditDrawer, setShowEditDrawer] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [editLeadSaving, setEditLeadSaving] = useState(false);
-  const [showQuickAssignModal, setShowQuickAssignModal] = useState(false);
-  const [quickAssignUserId, setQuickAssignUserId] = useState("");
-  const [quickAssignLoading, setQuickAssignLoading] = useState(false);
-
-  // Forms
-  const [activityForm, setActivityForm] = useState({ type: "CALL", notes: "", followUpDate: "" });
-  const [demoForm, setDemoForm] = useState({
-    date: "",
-    type: "Online",
-    attendees: "",
-    notes: "",
-    outcome: "INTERESTED",
-  });
-  const [convertForm, setConvertForm] = useState({
-    subdomain: "",
-    adminName: "",
-    adminIdentifier: "",
-    adminPassword: "",
-    amountPaid: 12000,
-    commissionPercentage: 20,
-  });
-
-  const [newLeadForm, setNewLeadForm] = useState({
+  // Form States
+  const [formData, setFormData] = useState<LeadFormData>({
     name: "",
     type: "Samastha",
     districtId: "",
     district: "",
     place: "",
     address: "",
-    status: "NEW",
     studentCount: 150,
     teacherCount: 8,
     existingSoftware: "",
     source: "WHATSAPP",
-    contactName: "",
-    contactPhone: "",
-    contactSecondaryPhone: "",
-    contactRole: "",
-    enableCommission: false,
-    commissionPercentage: 20,
-    contributors: [{ userId: currentUserId, percentage: 20 }] as Array<{ userId: string; percentage: number; notes?: string }>,
-  });
-
-  const [editLeadForm, setEditLeadForm] = useState({
-    name: "",
-    type: "Samastha",
-    districtId: "",
-    district: "",
-    place: "",
-    address: "",
-    studentCount: 0,
-    teacherCount: 0,
-    existingSoftware: "",
-    source: "WHATSAPP",
     status: "NEW",
     enableCommission: false,
     commissionPercentage: 20,
-    contributors: [{ userId: currentUserId, percentage: 20 }] as Array<{ userId: string; percentage: number; notes?: string }>,
-    primaryContactId: "",
+    contributors: [{ userId: effectiveUserId, percentage: 20 }],
     contactName: "",
     contactPhone: "",
     contactSecondaryPhone: "",
     contactRole: "",
   });
 
-  // Timeline item editing
-  const [editingTimelineId, setEditingTimelineId] = useState<string | null>(null);
-  const [editTimelineForm, setEditTimelineForm] = useState<{
-    type: string;
-    notes: string;
-    followUpDate: string;
-  }>({ type: "CALL", notes: "", followUpDate: "" });
-  const [timelineActionLoading, setTimelineActionLoading] = useState(false);
-
-  // Follow-up quick picker
-  const [showFollowUpPicker, setShowFollowUpPicker] = useState(false);
-  const [quickFollowUpDate, setQuickFollowUpDate] = useState("");
-  const [quickFollowUpRemarks, setQuickFollowUpRemarks] = useState("");
-  const [followUpSaving, setFollowUpSaving] = useState(false);
-  const [cardFollowUpPickerId, setCardFollowUpPickerId] = useState<string | null>(null);
-  const [cardStatusPickerId, setCardStatusPickerId] = useState<string | null>(null);
-  const [cardCustomDate, setCardCustomDate] = useState("");
-  const [cardRemarks, setCardRemarks] = useState("");
-
-  // Detail tab
-  const [activeLeadTab, setActiveLeadTab] = useState<"activity" | "details" | "pipeline">("activity");
-
-  // Mobile horizontal scroll refs for auto-scrolling active chips
-  const presetsScrollRef = useRef<HTMLDivElement>(null);
-  const activePresetRef = useRef<HTMLButtonElement>(null);
-  const stagesScrollRef = useRef<HTMLDivElement>(null);
-  const activeStageRef = useRef<HTMLButtonElement>(null);
-
-  // Auto-scroll active preset chip into view on mobile/desktop
-  useEffect(() => {
-    if (activePresetRef.current && presetsScrollRef.current) {
-      activePresetRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "nearest",
-      });
-    }
-  }, [smartPreset]);
-
-  // Auto-scroll active pipeline stage into view on mobile/desktop
-  useEffect(() => {
-    if (activeStageRef.current && stagesScrollRef.current) {
-      activeStageRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "nearest",
-      });
-    }
-  }, [activeStage]);
-
-  // Close card popovers on click outside or Escape (exempts date picker dialogs and form elements)
-  useEffect(() => {
-    if (!cardStatusPickerId && !cardFollowUpPickerId) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setCardStatusPickerId(null);
-        setCardFollowUpPickerId(null);
-      }
-    };
-
-    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-      if (
-        target.closest("[data-popover-container]") ||
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.tagName === "SELECT" ||
-        target.tagName === "BUTTON" ||
-        target.closest("input") ||
-        target.closest("textarea") ||
-        target.closest("select") ||
-        target.closest("button")
-      ) {
-        return;
-      }
-      setCardStatusPickerId(null);
-      setCardFollowUpPickerId(null);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-    };
-  }, [cardStatusPickerId, cardFollowUpPickerId]);
-
-  const isSuperOrManager = ["SUPER_ADMIN", "SALES_MANAGER"].includes(user?.actorType ?? "");
-  const canDelete = ["SUPER_ADMIN", "SALES_MANAGER"].includes(user?.actorType ?? "");
-
-  const toast = (msg: string, isErr = false) => {
-    if (isErr) sonnerToast.error(msg);
-    else sonnerToast.success(msg);
-  };
-
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedText(label);
-    setTimeout(() => setCopiedText(null), 2000);
-  };
-
-  const handleOpenAddLead = () => {
-    const targetId = effectiveUserId || (assigneeOptions.length > 0 ? assigneeOptions[0].id : "");
-    setNewLeadForm({
-      name: "",
-      type: "Samastha",
-      districtId: "",
-      district: "",
-      place: "",
-      address: "",
-      status: "NEW",
-      studentCount: 150,
-      teacherCount: 8,
-      existingSoftware: "",
-      source: "WHATSAPP",
-      contactName: "",
-      contactPhone: "",
-      contactSecondaryPhone: "",
-      contactRole: "",
-      enableCommission: false,
-      commissionPercentage: 20,
-      contributors: [{ userId: targetId, percentage: 20 }],
-    });
-    setShowAddDrawer(true);
-  };
-
-  const loadData = async (silent = false, reloadStatic = false) => {
+  // Data Loading
+  const loadData = useCallback(async (isSilent = false) => {
     if (!accessToken) return;
-    if (!silent) setLoading(true);
+    if (!isSilent) setLoading(true);
     try {
-      if (!staticDataLoaded.current || reloadStatic) {
-        const [list, dList, users] = await Promise.all([
-          listLeads(accessToken, { search: debouncedSearch }),
-          listDistricts(accessToken),
-          listInternalUsers(accessToken).catch(() => []),
-        ]);
-        setLeads(list || []);
-        setDistricts(dList || []);
-        setTeamUsers(users || []);
-        staticDataLoaded.current = true;
-        if (users && users.length > 0 && !newLeadForm.contributors[0]?.userId) {
-          setNewLeadForm((prev) => ({
-            ...prev,
-            contributors: [
-              { userId: effectiveUserId || users[0].id, percentage: prev.commissionPercentage },
-            ],
-          }));
-        }
-      } else {
-        const list = await listLeads(accessToken, { search: debouncedSearch });
-        setLeads(list || []);
-      }
-    } catch (e) {
-      sonnerToast.error((e as Error).message);
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  };
+      const [leadsRes, teamRes, districtsRes] = await Promise.allSettled([
+        listLeads(accessToken, {}),
+        listInternalUsers(accessToken),
+        listDistricts(accessToken),
+      ]);
 
-  const loadLeadDetail = async (id: string) => {
-    if (!accessToken) return;
-    setDetailLoading(true);
-    try {
-      const detail = await getLead(id, accessToken);
-      setSelectedLead(detail);
-      setConvertForm((prev) => ({
-        ...prev,
-        subdomain: detail.name
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "")
-          .substring(0, 15),
-        adminName: detail.contacts[0]?.name || "",
-        adminIdentifier: detail.contacts[0]?.phone || "",
-        adminPassword: `admin_${Math.random().toString(36).substring(2, 8)}`,
-        commissionPercentage: detail.commissionPercentage ?? 20,
-      }));
-    } catch (e) {
-      sonnerToast.error("Could not load lead: " + (e as Error).message);
+      if (leadsRes.status === "fulfilled") setLeads(leadsRes.value || []);
+      if (teamRes.status === "fulfilled") setTeamUsers(teamRes.value || []);
+      if (districtsRes.status === "fulfilled") setDistricts(districtsRes.value || []);
+    } catch (err: any) {
+      toast(err.message || "Failed to load CRM data", true);
     } finally {
-      setDetailLoading(false);
+      if (!isSilent) setLoading(false);
     }
-  };
+  }, [accessToken, toast]);
 
   useEffect(() => {
     loadData();
-  }, [accessToken, debouncedSearch]); // eslint-disable-line
+  }, [loadData]);
 
-  useEffect(() => {
-    const idParam = searchParams.get("id");
-    if (idParam && idParam !== selectedLeadId) {
-      setSelectedLeadId(idParam);
-      setShowMobileDetail(true);
+  const loadLeadDetail = useCallback(async (id: string) => {
+    if (!accessToken) return;
+    setDetailLoading(true);
+    try {
+      const res = await getLead(id, accessToken);
+      setSelectedLead(res);
+    } catch (err: any) {
+      toast(err.message || "Failed to load lead details", true);
+    } finally {
+      setDetailLoading(false);
     }
-    const filterParam = searchParams.get("filter");
-    if (filterParam) {
-      const upper = filterParam.toUpperCase();
-      if (["ALL", "AI_PRIORITY", "OVERDUE", "TODAY", "UNTREATED", "STALE", "HOT_WARM", "QUALITY", "ACTIVE_TRIALS", "NO_FOLLOWUP"].includes(upper)) {
-        setSmartPreset(upper as any);
-      }
-    }
-    const sortParam = searchParams.get("sort");
-    if (sortParam) {
-      const upper = sortParam.toUpperCase();
-      if (
-        [
-          "SMART_PRIORITY",
-          "URGENT",
-          "FOLLOWUP_ASC",
-          "FOLLOWUP_DESC",
-          "LAST_FOLLOWUP_ASC",
-          "LAST_FOLLOWUP_DESC",
-          "STATUS_CHANGED_DESC",
-          "STATUS_CHANGED_ASC",
-          "SCORE_DESC",
-          "STUDENTS",
-          "NEWEST",
-          "OLDEST",
-          "NAME",
-        ].includes(upper)
-      ) {
-        setSortBy(upper as LeadSortOption);
-      }
-    }
-    const assigneeParam = searchParams.get("assignee");
-    if (assigneeParam) {
-      const upper = assigneeParam.toUpperCase();
-      if (upper === "ALL" || upper === "UNASSIGNED" || upper === "ME") {
-        setSelectedAssignee(upper);
-      } else {
-        setSelectedAssignee(assigneeParam);
-      }
-    }
-  }, [searchParams]); // eslint-disable-line
-
-  useEffect(() => {
-    if (selectedLeadId) loadLeadDetail(selectedLeadId);
-    else setSelectedLead(null);
-  }, [selectedLeadId]); // eslint-disable-line
+  }, [accessToken, toast]);
 
   const selectLead = (id: string) => {
     setSelectedLeadId(id);
-    setShowMobileDetail(true);
-    setActiveSection(null);
-    setShowFollowUpPicker(false);
+    loadLeadDetail(id);
+    if (window.innerWidth < 1024) setShowMobileDetail(true);
   };
 
   const closeLead = () => {
@@ -999,95 +293,107 @@ export default function CrmLeadsPage() {
     setShowMobileDetail(false);
   };
 
-  const handleStartEditTimeline = (item: {
-    id: string;
-    type: string;
-    notes: string;
-    followUpDate?: string;
-  }) => {
-    setEditingTimelineId(item.id);
-    setEditTimelineForm({
-      type: item.type,
-      notes: item.notes,
-      followUpDate: item.followUpDate ? item.followUpDate.split("T")[0] : "",
-    });
-  };
-
-  const handleSaveEditTimeline = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLead || !editingTimelineId || !accessToken) return;
-    setTimelineActionLoading(true);
+  // Stage & Follow-up Actions
+  const handleUpdateStage = async (newStage: string, leadId: string) => {
+    if (!accessToken) return;
+    setActionLoading(true);
     try {
-      await updateActivity(
-        selectedLead.id,
-        editingTimelineId,
-        {
-          type: editTimelineForm.type,
-          notes: editTimelineForm.notes.trim(),
-          followUpDate: editTimelineForm.followUpDate ? editTimelineForm.followUpDate : null,
-        },
-        accessToken
+      await updateLead(leadId, { status: newStage as LeadStatus }, accessToken);
+      toast(`Moved to ${LEAD_STATUS_LABELS[newStage as LeadStatus] ?? newStage}`);
+      setLeads((prev) =>
+        prev.map((l) => (l.id === leadId ? { ...l, status: newStage as LeadStatus } : l))
       );
-      toast("Interaction entry updated successfully!");
-      setEditingTimelineId(null);
-      await loadLeadDetail(selectedLead.id);
-      await loadData(true);
-    } catch (err) {
-      toast((err as Error).message, true);
+      if (selectedLead?.id === leadId) {
+        setSelectedLead((prev) => (prev ? { ...prev, status: newStage as LeadStatus } : null));
+        loadLeadDetail(leadId);
+      }
+    } catch (err: any) {
+      toast(err.message || "Failed to update stage", true);
     } finally {
-      setTimelineActionLoading(false);
-    }
-  };
-
-  const handleDeleteTimeline = async (timelineId: string) => {
-    if (!selectedLead || !accessToken) return;
-    if (!window.confirm("Are you sure you want to delete this interaction log?")) return;
-    setTimelineActionLoading(true);
-    try {
-      await deleteActivity(selectedLead.id, timelineId, accessToken);
-      toast("Interaction log deleted.");
-      await loadLeadDetail(selectedLead.id);
-      await loadData(true);
-    } catch (err) {
-      toast((err as Error).message, true);
-    } finally {
-      setTimelineActionLoading(false);
+      setActionLoading(false);
     }
   };
 
   const handleQuickUpdateFollowUp = async (
-    newDate: string | null,
-    targetLeadId?: string,
+    targetDate: string | null,
+    leadId: string,
     remarks?: string
   ) => {
-    const targetId = targetLeadId || selectedLead?.id;
-    if (!targetId || !accessToken) return;
-    setFollowUpSaving(true);
+    if (!accessToken) return;
     try {
-      await updateFollowUpDate(targetId, newDate, accessToken, remarks);
-      toast(
-        newDate
-          ? `Next follow-up set for ${new Date(newDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}${remarks ? " with notes" : ""}`
-          : "Follow-up schedule cleared"
+      await updateFollowUpDate(leadId, targetDate, accessToken, remarks);
+      toast(targetDate ? `Follow-up scheduled for ${targetDate}` : "Follow-up schedule cleared");
+      const nextDate = targetDate || undefined;
+      setLeads((prev) =>
+        prev.map((l) => (l.id === leadId ? { ...l, nextFollowUpDate: nextDate } : l))
       );
-      setShowFollowUpPicker(false);
-      setCardFollowUpPickerId(null);
-      setCardCustomDate("");
-      setCardRemarks("");
-      setQuickFollowUpRemarks("");
-      if (selectedLead?.id === targetId) {
-        await loadLeadDetail(targetId);
+      if (selectedLead?.id === leadId) {
+        setSelectedLead((prev) => (prev ? { ...prev, nextFollowUpDate: nextDate } : null));
+        loadLeadDetail(leadId);
       }
-      await loadData(true);
-    } catch (err) {
-      toast((err as Error).message, true);
-    } finally {
-      setFollowUpSaving(false);
+    } catch (err: any) {
+      toast(err.message || "Failed to update follow-up", true);
     }
   };
 
+  const handleSelfClaim = async (leadId: string) => {
+    if (!accessToken || !effectiveUserId) return;
+    setActionLoading(true);
+    try {
+      await assignLead(leadId, [{ userId: effectiveUserId, percentage: 100 }], accessToken);
+      toast("Lead claimed successfully! ⭐");
+      await loadData(true);
+      if (selectedLead?.id === leadId) await loadLeadDetail(leadId);
+    } catch (err: any) {
+      toast(err.message || "Failed to claim lead", true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleQuickAssign = async (userId: string) => {
+    if (!selectedLead || !accessToken) return;
+    setQuickAssignLoading(true);
+    try {
+      await assignLead(selectedLead.id, [{ userId, percentage: 100 }], accessToken);
+      toast("Lead reassigned successfully");
+      setShowQuickAssignModal(false);
+      await loadData(true);
+      await loadLeadDetail(selectedLead.id);
+    } catch (err: any) {
+      toast(err.message || "Failed to reassign lead", true);
+    } finally {
+      setQuickAssignLoading(false);
+    }
+  };
+
+  // Create & Edit Handlers
+  const handleOpenCreateDrawer = () => {
+    setFormData({
+      name: "",
+      type: "Samastha",
+      districtId: districts[0]?.id || "",
+      district: districts[0]?.name || "",
+      place: "",
+      address: "",
+      studentCount: 150,
+      teacherCount: 8,
+      existingSoftware: "",
+      source: "WHATSAPP",
+      status: "NEW",
+      enableCommission: false,
+      commissionPercentage: 20,
+      contributors: [{ userId: effectiveUserId, percentage: 20 }],
+      contactName: "",
+      contactPhone: "",
+      contactSecondaryPhone: "",
+      contactRole: "",
+    });
+    setShowCreateDrawer(true);
+  };
+
   const handleStartEditLead = (lead: LeadDetail) => {
-    const primaryContact = lead.contacts?.find((c) => c.isPrimary) || lead.contacts?.[0];
+    const primaryC = lead.contacts?.find((c) => c.isPrimary) || lead.contacts?.[0];
     const initialContributors =
       lead.contributors && lead.contributors.length > 0
         ? lead.contributors.map((c) => ({
@@ -1095,18 +401,15 @@ export default function CrmLeadsPage() {
             percentage: Number(c.percentage || 0),
             notes: c.notes || "",
           }))
-        : [{ userId: effectiveUserId || assigneeOptions[0]?.id || "", percentage: Number(lead.commissionPercentage ?? 20) }];
+        : [{ userId: effectiveUserId, percentage: Number(lead.commissionPercentage ?? 20) }];
 
-    const hasCommission = Number(lead.commissionPercentage ?? 0) > 0;
-
-    setEditLeadForm({
+    setFormData({
       name: lead.name || "",
       type: lead.type || "Samastha",
       districtId:
         lead.districtId ||
-        (lead.district
-          ? districts.find((d) => d.name.toLowerCase() === lead.district.toLowerCase())?.id || ""
-          : ""),
+        districts.find((d) => d.name.toLowerCase() === (lead.district || "").toLowerCase())?.id ||
+        "",
       district: lead.district || "",
       place: lead.place || "",
       address: lead.address || "",
@@ -1114,632 +417,309 @@ export default function CrmLeadsPage() {
       teacherCount: lead.teacherCount ?? 0,
       existingSoftware: lead.existingSoftware || "",
       source: lead.source || "WHATSAPP",
-      status: lead.status || "NEW",
-      enableCommission: hasCommission,
+      status: (lead.status as LeadStatus) || "NEW",
+      enableCommission: Number(lead.commissionPercentage ?? 0) > 0,
       commissionPercentage: Number(lead.commissionPercentage ?? 20),
       contributors: initialContributors,
-      primaryContactId: primaryContact?.id || "",
-      contactName: primaryContact?.name || "",
-      contactPhone: primaryContact?.phone || "",
-      contactSecondaryPhone: primaryContact?.secondaryPhone || "",
-      contactRole: primaryContact?.role || "",
+      primaryContactId: primaryC?.id || "",
+      contactName: primaryC?.name || "",
+      contactPhone: primaryC?.phone || "",
+      contactSecondaryPhone: primaryC?.secondaryPhone || "",
+      contactRole: primaryC?.role || "",
     });
     setShowEditDrawer(true);
   };
 
-  const handleSaveEditLead = async (e: React.FormEvent) => {
+  const handleSaveLead = async (e: React.FormEvent, isEdit: boolean) => {
     e.preventDefault();
-    if (!selectedLead || !accessToken) return;
-    if (!editLeadForm.name.trim()) {
-      toast("Madrasa name is required", true);
-      return;
-    }
-    if (!editLeadForm.district.trim() && !editLeadForm.districtId) {
-      toast("District is required", true);
-      return;
-    }
-
-    const commRate = editLeadForm.enableCommission
-      ? Number(editLeadForm.commissionPercentage) || 0
-      : 0;
-
-    if (editLeadForm.enableCommission && commRate > 0) {
-      const splitTotal = editLeadForm.contributors.reduce(
-        (sum, c) => sum + Number(c.percentage || 0),
-        0
-      );
-      if (Math.abs(splitTotal - commRate) > 0.01) {
-        toast(
-          `Contributor split total (${splitTotal}%) must equal the Commission percentage (${commRate}%).`,
-          true
-        );
-        return;
-      }
-    }
-
-    setEditLeadSaving(true);
-    try {
-      const targetDist = editLeadForm.districtId
-        ? districts.find((d) => d.id === editLeadForm.districtId)?.name || editLeadForm.district
-        : editLeadForm.district;
-
-      const contacts: any[] = [];
-      if (
-        editLeadForm.contactName.trim() ||
-        editLeadForm.contactPhone.trim() ||
-        editLeadForm.contactSecondaryPhone.trim()
-      ) {
-        contacts.push({
-          id: editLeadForm.primaryContactId || undefined,
-          name: editLeadForm.contactName.trim() || undefined,
-          phone: editLeadForm.contactPhone.trim() || undefined,
-          secondaryPhone: editLeadForm.contactSecondaryPhone.trim() || undefined,
-          role: editLeadForm.contactRole.trim() || undefined,
-          isPrimary: true,
-        });
-      }
-
-      const contributors = editLeadForm.contributors
-        .filter((c) => c.userId)
-        .map((c) => ({
-          userId: c.userId,
-          percentage: editLeadForm.enableCommission ? Number(c.percentage || 0) : 0,
-          notes: c.notes,
-        }));
-
-      await updateLead(
-        selectedLead.id,
-        {
-          name: editLeadForm.name.trim(),
-          type: editLeadForm.type,
-          district: targetDist.trim(),
-          districtId: editLeadForm.districtId || undefined,
-          place: editLeadForm.place.trim(),
-          address: editLeadForm.address.trim() || undefined,
-          studentCount: Number(editLeadForm.studentCount) || 0,
-          teacherCount: Number(editLeadForm.teacherCount) || 0,
-          existingSoftware: editLeadForm.existingSoftware.trim() || undefined,
-          source: editLeadForm.source as any,
-          status: editLeadForm.status as any,
-          commissionPercentage: commRate,
-          contacts,
-          contributors,
-        },
-        accessToken
-      );
-
-      toast("Lead details updated successfully!");
-      setShowEditDrawer(false);
-      loadLeadDetail(selectedLead.id);
-      loadData();
-    } catch (err: any) {
-      toast((err as Error).message || "Failed to update lead", true);
-    } finally {
-      setEditLeadSaving(false);
-    }
-  };
-
-  const handleQuickAssign = async (userId: string) => {
-    if (!selectedLead || !accessToken) return;
-    if (!userId) {
-      toast("Please select a team member to assign", true);
-      return;
-    }
-    setQuickAssignLoading(true);
-    try {
-      const targetUser = assigneeOptions.find((u) => u.id === userId);
-      const userObj = targetUser
-        ? { id: targetUser.id, name: targetUser.name, role: targetUser.role }
-        : { id: userId, name: "Team Member", role: "SALES_EXECUTIVE" };
-      const commRate = Number(selectedLead.commissionPercentage ?? 0);
-
-      await updateLead(
-        selectedLead.id,
-        {
-          contributors: [
-            {
-              userId,
-              percentage: commRate,
-            },
-          ],
-        },
-        accessToken
-      );
-      toast(`Lead successfully assigned to ${targetUser?.name || "team member"}!`);
-      setShowQuickAssignModal(false);
-
-      // Instant optimistic state sync
-      setLeads((prev) =>
-        prev.map((l) =>
-          l.id === selectedLead.id
-            ? {
-                ...l,
-                contributors: [
-                  {
-                    userId,
-                    percentage: commRate,
-                    user: userObj,
-                  },
-                ],
-              }
-            : l
-        )
-      );
-      setSelectedLead((prev) =>
-        prev
-          ? {
-              ...prev,
-              contributors: [
-                {
-                  userId,
-                  percentage: commRate,
-                  user: userObj,
-                },
-              ],
-            }
-          : null
-      );
-
-      loadLeadDetail(selectedLead.id);
-      loadData(true);
-    } catch (err: any) {
-      toast(err.message || "Failed to assign lead", true);
-    } finally {
-      setQuickAssignLoading(false);
-    }
-  };
-
-  const handleSelfClaimLead = async (leadId: string) => {
     if (!accessToken) return;
-    const targetUserId = effectiveUserId || user?.id || "";
-    if (!targetUserId) {
-      toast("Unable to identify current user account", true);
-      return;
-    }
-    setActionLoading(true);
+    if (!formData.name.trim()) return toast("Madrasa name is required", true);
+    if (!formData.district.trim() && !formData.districtId) return toast("District is required", true);
+
+    setFormSaving(true);
     try {
-      const targetLead = leads.find((l) => l.id === leadId);
-      const commRate = Number(targetLead?.commissionPercentage ?? 20);
-      await updateLead(
-        leadId,
-        {
-          contributors: [
-            {
-              userId: targetUserId,
-              percentage: commRate,
-            },
-          ],
-        },
-        accessToken
-      );
-      toast("Lead successfully claimed and assigned to you!");
-      const myUserObj = {
-        id: targetUserId,
-        name: user?.name || "You",
-        role: user?.actorType || "STAFF",
+      const payload: any = {
+        name: formData.name.trim(),
+        type: formData.type,
+        districtId: formData.districtId || undefined,
+        district: formData.district,
+        place: formData.place,
+        address: formData.address,
+        studentCount: Number(formData.studentCount) || 0,
+        teacherCount: Number(formData.teacherCount) || 0,
+        existingSoftware: formData.existingSoftware,
+        source: formData.source,
+        status: formData.status as LeadStatus,
+        commissionPercentage: formData.enableCommission ? Number(formData.commissionPercentage) : 0,
+        contributors: formData.contributors.filter((c) => Boolean(c.userId)),
       };
 
-      setLeads((prev) =>
-        prev.map((l) =>
-          l.id === leadId
-            ? {
-                ...l,
-                contributors: [
-                  {
-                    userId: targetUserId,
-                    percentage: commRate,
-                    user: myUserObj,
-                  },
-                ],
-              }
-            : l
-        )
-      );
-      if (selectedLead?.id === leadId) {
-        setSelectedLead((prev) =>
-          prev
-            ? {
-                ...prev,
-                contributors: [
-                  {
-                    userId: targetUserId,
-                    percentage: commRate,
-                    user: myUserObj,
-                  },
-                ],
-              }
-            : null
-        );
+      if (formData.contactName || formData.contactPhone) {
+        payload.contact = {
+          name: formData.contactName,
+          phone: formData.contactPhone,
+          secondaryPhone: formData.contactSecondaryPhone,
+          role: formData.contactRole,
+        };
       }
-      loadData(true);
-    } catch (e: any) {
-      toast(e.message || "Failed to claim lead", true);
+
+      if (isEdit && selectedLead) {
+        await updateLead(selectedLead.id, payload, accessToken);
+        toast("Madrasa lead updated successfully!");
+        setShowEditDrawer(false);
+        await loadLeadDetail(selectedLead.id);
+      } else {
+        const created = await createLead(payload, accessToken);
+        toast("New lead created successfully!");
+        setShowCreateDrawer(false);
+        if (created?.id) selectLead(created.id);
+      }
+      await loadData(true);
+    } catch (err: any) {
+      toast(err.message || "Failed to save lead", true);
     } finally {
-      setActionLoading(false);
+      setFormSaving(false);
     }
   };
 
-  const handleExecuteBulkAction = async () => {
-    if (!bulkModalType || selectedLeadIds.size === 0 || !accessToken) return;
-    setBulkActionLoading(true);
-    try {
-      const leadIds = Array.from(selectedLeadIds);
-      const payload: BulkLeadActionPayload = {
-        leadIds,
-        action: bulkModalType,
-      };
-
-      if (bulkModalType === "ASSIGN") {
-        if (!bulkSelectedUserId) {
-          toast("Please choose a team member to assign", true);
-          setBulkActionLoading(false);
-          return;
-        }
-        payload.contributors = [{ userId: bulkSelectedUserId, percentage: 20 }];
-      } else if (bulkModalType === "STATUS") {
-        payload.status = bulkSelectedStatus;
-        if (bulkRemarks.trim()) payload.remarks = bulkRemarks.trim();
-      } else if (bulkModalType === "FOLLOW_UP") {
-        payload.followUpDate = bulkFollowUpDate || null;
-        if (bulkRemarks.trim()) payload.remarks = bulkRemarks.trim();
-      }
-
-      const res = await bulkLeadAction(payload, accessToken);
-      toast(`Successfully updated ${res.count ?? leadIds.length} lead(s)!`);
-      setSelectedLeadIds(new Set());
-      setBulkModalType(null);
-      setBulkRemarks("");
-      loadData(true);
-      if (selectedLeadId && leadIds.includes(selectedLeadId)) {
-        if (bulkModalType === "DELETE") {
-          setSelectedLeadId(null);
-          setSelectedLead(null);
-        } else {
-          loadLeadDetail(selectedLeadId);
-        }
-      }
-    } catch (e) {
-      toast((e as Error).message, true);
-    } finally {
-      setBulkActionLoading(false);
-    }
-  };
-
-  // Bulk import configuration
-  const importConfig: ImportConfig<BulkImportLeadItem> = useMemo(() => {
-    return {
-      entityName: "Contacts / Leads",
-      templateFilename: "crm-contacts-template",
-      columns: [
-        {
-          header: "Madrasa Name",
-          field: "name",
-          required: false,
-          example: "Darul Huda Islamic Academy",
-          validate: (val, row) => {
-            if (!val && !row.contactName) {
-              return "Either Madrasa Name or Contact Name must be provided";
-            }
-            return null;
-          },
-        },
-        {
-          header: "District",
-          field: "district",
-          required: true,
-          example: "Malappuram",
-          validate: (val) => (!val || !String(val).trim() ? "District is required" : null),
-        },
-        { header: "Place / Town", field: "place", required: false, example: "Chemmad" },
-        { header: "Primary Contact Person", field: "contactName", required: false, example: "Usthad Ahmad Kabeer" },
-        { header: "Primary Phone", field: "contactPhone", required: false, example: "9876543210" },
-        { header: "Secondary / Alt Number", field: "secondaryPhone", required: false, example: "9876543211" },
-        { header: "Role / Designation", field: "contactRole", required: false, example: "Sadr Usthad" },
-        {
-          header: "Status",
-          field: "status",
-          required: false,
-          example: "New",
-          parse: (raw) => {
-            if (!raw) return "NEW";
-            const normalized = String(raw).trim().toUpperCase().replace(/[\s-]+/g, "_");
-            for (const [key, label] of Object.entries(LEAD_STATUS_LABELS)) {
-              if (
-                key === normalized ||
-                label.toUpperCase().replace(/[\s-]+/g, "_") === normalized
-              ) {
-                return key;
-              }
-            }
-            return normalized;
-          },
-        },
-        { header: "Syllabus Type", field: "type", required: false, example: "Samastha" },
-        {
-          header: "Student Count",
-          field: "studentCount",
-          required: false,
-          example: "180",
-          parse: (raw) => (raw ? parseInt(String(raw), 10) || 0 : 0),
-        },
-        {
-          header: "Teacher Count",
-          field: "teacherCount",
-          required: false,
-          example: "12",
-          parse: (raw) => (raw ? parseInt(String(raw), 10) || 0 : 0),
-        },
-        {
-          header: "Commission %",
-          field: "commissionPercentage",
-          required: false,
-          example: "20",
-          parse: (raw) => (raw ? parseFloat(String(raw)) || 0 : 0),
-        },
-      ],
-      templateSamples: [
-        {
-          "Madrasa Name": "Darul Uloom Central Madrasa",
-          District: "Kozhikode",
-          "Place / Town": "Koduvally",
-          "Primary Contact Person": "Usthad Abdul Hameed",
-          "Primary Phone": "9447123456",
-          "Secondary / Alt Number": "9847654321",
-          "Role / Designation": "Sadr Usthad",
-          Status: "New",
-          "Syllabus Type": "Samastha",
-          "Student Count": "220",
-          "Teacher Count": "14",
-          "Commission %": "20",
-        },
-        {
-          "Madrasa Name": "Al-Manar Public Madrasa",
-          District: "Malappuram",
-          "Place / Town": "Manjeri",
-          "Primary Contact Person": "K. Mohammed Ali",
-          "Primary Phone": "9895012345",
-          "Secondary / Alt Number": "9895987654",
-          "Role / Designation": "Secretary",
-          Status: "Interested",
-          "Syllabus Type": "AP",
-          "Student Count": "150",
-          "Teacher Count": "8",
-          "Commission %": "0",
-        },
-      ],
-      createRow: async (row) => bulkImportLeads([row], accessToken!),
-      createBulk: async (rows) => bulkImportLeads(rows, accessToken!),
-    };
-  }, [accessToken]);
-
-  const handleCreateLead = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newLeadForm.name.trim()) {
-      toast("Madrasa name is required", true);
-      return;
-    }
-    if (!newLeadForm.district.trim()) {
-      toast("District is required", true);
-      return;
-    }
-
-    if (newLeadForm.enableCommission) {
-      const splitTotal = newLeadForm.contributors.reduce(
-        (sum, c) => sum + Number(c.percentage),
-        0
-      );
-      if (Math.abs(splitTotal - newLeadForm.commissionPercentage) > 0.01) {
-        toast(
-          `Contributor split total (${splitTotal}%) must equal the Commission percentage (${newLeadForm.commissionPercentage}%).`,
-          true
-        );
-        return;
-      }
-    }
-
-    setActionLoading(true);
-    try {
-      const contacts = [];
-      if (newLeadForm.contactName || newLeadForm.contactPhone || newLeadForm.contactSecondaryPhone) {
-        contacts.push({
-          name: newLeadForm.contactName || undefined,
-          phone: newLeadForm.contactPhone || undefined,
-          secondaryPhone: newLeadForm.contactSecondaryPhone || undefined,
-          role: newLeadForm.contactRole || undefined,
-          isPrimary: true,
-        });
-      }
-
-      const contributors = newLeadForm.enableCommission
-        ? newLeadForm.contributors
-            .filter((c) => c.userId && Number(c.percentage) > 0)
-            .map((c) => ({
-              userId: c.userId,
-              percentage: Number(c.percentage),
-            }))
-        : newLeadForm.contributors
-            .filter((c) => c.userId)
-            .map((c) => ({
-              userId: c.userId,
-              percentage: 0,
-            }));
-
-      const created = await createLead(
-        {
-          name: newLeadForm.name.trim(),
-          type: newLeadForm.type,
-          district: newLeadForm.district.trim(),
-          districtId: newLeadForm.districtId || undefined,
-          place: newLeadForm.place.trim(),
-          address: newLeadForm.address.trim() || undefined,
-          status: newLeadForm.status as any,
-          studentCount: Number(newLeadForm.studentCount) || 0,
-          teacherCount: Number(newLeadForm.teacherCount) || 0,
-          existingSoftware: newLeadForm.existingSoftware.trim() || undefined,
-          source: newLeadForm.source as any,
-          commissionPercentage: newLeadForm.enableCommission
-            ? Number(newLeadForm.commissionPercentage)
-            : 0,
-          contacts,
-          contributors,
-        },
-        accessToken!
-      );
-
-      toast("Lead added to pipeline successfully!");
-      setShowAddDrawer(false);
-      setNewLeadForm({
-        name: "",
-        type: "Samastha",
-        districtId: "",
-        district: "",
-        place: "",
-        address: "",
-        status: "NEW",
-        studentCount: 150,
-        teacherCount: 8,
-        existingSoftware: "",
-        source: "WHATSAPP",
-        contactName: "",
-        contactPhone: "",
-        contactSecondaryPhone: "",
-        contactRole: "",
-        enableCommission: false,
-        commissionPercentage: 20,
-        contributors: [{ userId: effectiveUserId || assigneeOptions[0]?.id || "", percentage: 20 }],
-      });
-      loadData();
-      selectLead(created.id);
-    } catch (e) {
-      toast((e as Error).message, true);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleLogActivity = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLead || !activityForm.notes.trim()) return;
+  // Detail Action Handlers
+  const handleLogActivity = async (dto: { type: string; notes: string; followUpDate?: string }) => {
+    if (!selectedLead || !accessToken || !dto.notes.trim()) return;
     setActionLoading(true);
     try {
       await logActivity(
         selectedLead.id,
         {
-          type: activityForm.type,
-          notes: activityForm.notes.trim(),
-          followUpDate: activityForm.followUpDate || undefined,
+          type: dto.type,
+          notes: dto.notes,
+          followUpDate: dto.followUpDate || undefined,
         },
-        accessToken!
+        accessToken
       );
-      toast("Interaction logged successfully!");
-      setActivityForm({ type: "CALL", notes: "", followUpDate: "" });
-      setActiveSection(null);
+      toast("Interaction logged successfully! 📝");
       await loadLeadDetail(selectedLead.id);
       await loadData(true);
-    } catch (e) {
-      toast((e as Error).message, true);
+    } catch (err: any) {
+      toast(err.message || "Failed to log activity", true);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleLogDemo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLead || !demoForm.date) return;
+  const handleUpdateActivity = async (
+    timelineId: string,
+    dto: { type?: string; notes?: string; followUpDate?: string | null }
+  ) => {
+    if (!selectedLead || !accessToken) return;
     setActionLoading(true);
     try {
-      await scheduleDemo(
-        selectedLead.id,
-        {
-          date: demoForm.date,
-          type: demoForm.type,
-          attendees: demoForm.attendees
-            ? demoForm.attendees.split(",").map((a) => a.trim())
-            : [],
-          notes: demoForm.notes || undefined,
-          outcome: demoForm.outcome,
-        },
-        accessToken!
-      );
-      toast("Demo session recorded!");
-      setDemoForm({
-        date: "",
-        type: "Online",
-        attendees: "",
-        notes: "",
-        outcome: "INTERESTED",
-      });
-      setActiveSection(null);
+      await updateActivity(selectedLead.id, timelineId, dto, accessToken);
+      toast("Interaction updated successfully! ✏️");
       await loadLeadDetail(selectedLead.id);
       await loadData(true);
-    } catch (e) {
-      toast((e as Error).message, true);
+    } catch (err: any) {
+      toast(err.message || "Failed to update interaction", true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteActivity = async (timelineId: string) => {
+    if (!selectedLead || !accessToken) return;
+    if (!window.confirm("Are you sure you want to delete this interaction note?")) return;
+    setActionLoading(true);
+    try {
+      await deleteActivity(selectedLead.id, timelineId, accessToken);
+      toast("Interaction removed.");
+      await loadLeadDetail(selectedLead.id);
+      await loadData(true);
+    } catch (err: any) {
+      toast(err.message || "Failed to remove interaction", true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteLead = async (leadId: string) => {
+    if (!accessToken) return;
+    if (
+      !window.confirm(
+        "Are you sure you want to permanently delete this madrasa lead record? This action cannot be undone."
+      )
+    )
+      return;
+    setActionLoading(true);
+    try {
+      await deleteLead(leadId, accessToken);
+      toast("Lead deleted permanently.");
+      closeLead();
+      await loadData(true);
+    } catch (err: any) {
+      toast(err.message || "Failed to delete lead", true);
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleProvisionTrial = async () => {
-    if (!selectedLead) return;
+    if (!selectedLead || !accessToken) return;
     setActionLoading(true);
     try {
-      await provisionTrial(selectedLead.id, accessToken!);
-      toast("Trial workspace successfully created and activated!");
+      await provisionTrial(selectedLead.id, accessToken);
+      toast("Trial credentials created! Stage moved to Logged In.");
       await loadLeadDetail(selectedLead.id);
       await loadData(true);
-    } catch (e) {
-      toast((e as Error).message, true);
+    } catch (err: any) {
+      toast(err.message || "Failed to provision trial", true);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleConvertLead = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLead || !convertForm.subdomain || !convertForm.adminIdentifier) return;
+  const handleConvertToMadrasa = async (dto: {
+    subdomain: string;
+    adminName: string;
+    adminIdentifier: string;
+    adminPassword: string;
+    amountPaid: number;
+    commissionPercentage: number;
+  }) => {
+    if (!selectedLead || !accessToken) return;
     setActionLoading(true);
     try {
-      await convertLead(selectedLead.id, convertForm, accessToken!);
-      toast("🎉 Madrasa converted to active paying subscription!");
-      setActiveSection(null);
+      await convertLead(selectedLead.id, dto, accessToken);
+      toast("🎉 Madrasa converted to active subscription!");
       await loadLeadDetail(selectedLead.id);
       await loadData(true);
-    } catch (e) {
-      toast((e as Error).message, true);
+    } catch (err: any) {
+      toast(err.message || "Failed to convert madrasa", true);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleUpdateStage = async (newStatus: string, targetLeadId?: string) => {
-    const leadId = targetLeadId || selectedLead?.id;
-    if (!leadId || !accessToken) return;
-    setActionLoading(true);
+  // Bulk Actions
+  const handleExecuteBulkAction = async () => {
+    if (selectedLeadIds.size === 0 || !bulkModalType || !accessToken) return;
+    setBulkActionLoading(true);
+    const ids = Array.from(selectedLeadIds);
     try {
-      await updateLead(leadId, { status: newStatus as any }, accessToken);
-      toast(`Lead moved to ${LEAD_STATUS_LABELS[newStatus] ?? newStatus}`);
-      if (selectedLead?.id === leadId) {
-        await loadLeadDetail(leadId);
+      if (bulkModalType === "DELETE") {
+        await Promise.all(ids.map((id) => deleteLead(id, accessToken)));
+        toast(`Permanently deleted ${ids.length} leads.`);
+      } else if (bulkModalType === "ASSIGN") {
+        await bulkLeadAction(
+          {
+            leadIds: ids,
+            action: "ASSIGN",
+            contributors: [{ userId: bulkSelectedUserId, percentage: 100 }],
+          },
+          accessToken
+        );
+        toast(`Reassigned ${ids.length} leads successfully.`);
+      } else if (bulkModalType === "STATUS") {
+        await bulkLeadAction(
+          {
+            leadIds: ids,
+            action: "STATUS",
+            status: bulkSelectedStatus,
+            remarks: bulkRemarks || undefined,
+          },
+          accessToken
+        );
+        toast(`Updated stage for ${ids.length} leads.`);
+      } else if (bulkModalType === "FOLLOW_UP") {
+        await bulkLeadAction(
+          {
+            leadIds: ids,
+            action: "FOLLOW_UP",
+            followUpDate: bulkFollowUpDate || null,
+            remarks: bulkRemarks || undefined,
+          },
+          accessToken
+        );
+        toast(`Updated follow-up for ${ids.length} leads.`);
       }
+      setSelectedLeadIds(new Set());
+      setBulkModalType(null);
       await loadData(true);
-    } catch (e) {
-      toast((e as Error).message, true);
+      if (selectedLeadId && ids.includes(selectedLeadId)) await loadLeadDetail(selectedLeadId);
+    } catch (err: any) {
+      toast(err.message || "Failed to execute bulk action", true);
     } finally {
-      setActionLoading(false);
+      setBulkActionLoading(false);
     }
   };
 
-  const handleDeleteLead = async (id: string) => {
-    if (!window.confirm("Are you sure you want to permanently delete this lead?")) return;
-    try {
-      await deleteLead(id, accessToken!);
-      toast("Lead deleted successfully.");
-      closeLead();
-      loadData();
-    } catch (e) {
-      toast((e as Error).message, true);
-    }
-  };
+  // Filter Computation
+  const baseFilteredLeads = useMemo(() => {
+    return leads.filter((l) => {
+      if (selectedAssignee === "ME") {
+        if (!isLeadAssignedToUser(l, myIdentifiers, effectiveUserId)) return false;
+      } else if (selectedAssignee === "UNASSIGNED") {
+        if (!isLeadUnassigned(l)) return false;
+      }
+      return true;
+    });
+  }, [leads, selectedAssignee, myIdentifiers, effectiveUserId]);
+
+  const assigneeCounts = useMemo(() => {
+    let me = 0;
+    let unassigned = 0;
+    leads.forEach((l) => {
+      if (isLeadAssignedToUser(l, myIdentifiers, effectiveUserId)) me++;
+      if (isLeadUnassigned(l)) unassigned++;
+    });
+    return { me, all: leads.length, unassigned };
+  }, [leads, myIdentifiers, effectiveUserId]);
+
+  const stageCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: baseFilteredLeads.length };
+    LEAD_STATUSES.forEach((st) => (counts[st] = 0));
+    baseFilteredLeads.forEach((l) => {
+      if (counts[l.status] !== undefined) counts[l.status]++;
+    });
+    return counts;
+  }, [baseFilteredLeads]);
+
+  const smartCounts = useMemo(() => {
+    let aiPriority = 0;
+    let closingFocus = 0;
+    let overdue = 0;
+    let today = 0;
+    let untreated = 0;
+    let stale = 0;
+    let hotWarm = 0;
+    let quality = 0;
+    let noFollowup = 0;
+
+    baseFilteredLeads.forEach((l) => {
+      const p = calculateLeadSmartPriority(l, myIdentifiers, effectiveUserId);
+      if (p.urgencyLevel === "CRITICAL" || p.urgencyLevel === "HIGH") aiPriority++;
+      if (["DATA_COLLECTION", "LOGGED_IN", "ADVANCE", "FULL_PAID"].includes(l.status))
+        closingFocus++;
+      if (p.isOverdue) overdue++;
+      if (p.isToday) today++;
+      if (p.isUntreated) untreated++;
+      if (p.isStale) stale++;
+      if (l.score === "HOT" || l.score === "WARM") hotWarm++;
+      if (l.status === "QUALITY_LEAD") quality++;
+      if (!l.nextFollowUpDate && !["WON", "LOST"].includes(l.status)) noFollowup++;
+    });
+
+    return {
+      all: baseFilteredLeads.length,
+      aiPriority,
+      closingFocus,
+      overdue,
+      today,
+      untreated,
+      stale,
+      hotWarm,
+      quality,
+      noFollowup,
+    };
+  }, [baseFilteredLeads, myIdentifiers, effectiveUserId]);
 
   const availableDistricts = useMemo(() => {
     const set = new Set<string>();
@@ -1750,386 +730,73 @@ export default function CrmLeadsPage() {
     return Array.from(set).sort();
   }, [districts, leads]);
 
-  // Robust check if a lead is assigned to a specific user using all identifier combinations
-  const isLeadAssignedToUser = (
-    l: LeadListItem,
-    identifiers: Set<string>,
-    explicitUserId?: string
-  ): boolean => {
-    // 1. Check contributors
-    if (l.contributors && l.contributors.length > 0) {
-      for (const c of l.contributors) {
-        const cId = (c.userId || c.user?.id || "").toLowerCase().trim();
-        const cName = (c.user?.name || "").toLowerCase().trim();
-        const cUsername = ((c.user as any)?.username || "").toLowerCase().trim();
-        const cEmail = ((c.user as any)?.email || "").toLowerCase().trim();
+  const filteredLeads = useMemo(() => {
+    return baseFilteredLeads.filter((l) => {
+      if (activeStage !== "ALL" && l.status !== activeStage) return false;
+      if (selectedDistrict !== "ALL" && l.district !== selectedDistrict) return false;
 
-        if (explicitUserId && cId && cId === explicitUserId.toLowerCase().trim()) return true;
-        if (cId && identifiers.has(cId)) return true;
-        if (cName && identifiers.has(cName)) return true;
-        if (cUsername && identifiers.has(cUsername)) return true;
-        if (cEmail && identifiers.has(cEmail)) return true;
-      }
-    }
+      const priority = calculateLeadSmartPriority(l, myIdentifiers, effectiveUserId);
 
-    // 2. Direct assigned property if present on lead
-    const directAssignedId = ((l as any).assignedUserId || (l as any).assignedTo || "").toLowerCase().trim();
-    if (directAssignedId) {
-      if (explicitUserId && directAssignedId === explicitUserId.toLowerCase().trim()) return true;
-      if (identifiers.has(directAssignedId)) return true;
-    }
-
-    // 3. Fallback: check createdBy if no contributors exist
-    if ((!l.contributors || l.contributors.length === 0) && l.createdBy) {
-      const createdByLower = l.createdBy.toLowerCase().trim();
-      if (identifiers.has(createdByLower)) return true;
-    }
-
-    return false;
-  };
-
-  const isLeadUnassigned = (l: LeadListItem): boolean => {
-    const hasValidContributor = Boolean(
-      l.contributors &&
-      l.contributors.some((c) => {
-        const hasId = Boolean(c.userId && c.userId.trim() !== "");
-        const hasObj = Boolean(c.user && (c.user.id || c.user.name));
-        return hasId || hasObj;
-      })
-    );
-    const hasDirectAssignee = Boolean(
-      ((l as any).assignedUserId && (l as any).assignedUserId.trim() !== "") ||
-      ((l as any).assignedTo && (l as any).assignedTo.trim() !== "")
-    );
-    return !hasValidContributor && !hasDirectAssignee;
-  };
-
-  const isLeadAssignedTo = (l: LeadListItem, targetAssigneeId: string) => {
-    if (targetAssigneeId === "ALL") return true;
-
-    if (targetAssigneeId === "UNASSIGNED") {
-      return isLeadUnassigned(l);
-    }
-
-    if (
-      targetAssigneeId === "ME" ||
-      targetAssigneeId === effectiveUserId ||
-      (user?.id && targetAssigneeId === user.id)
-    ) {
-      return isLeadAssignedToUser(l, myIdentifiers, effectiveUserId);
-    }
-
-    const targetUser = assigneeOptions.find((u) => u.id === targetAssigneeId);
-    const targetSet = new Set<string>();
-    targetSet.add(targetAssigneeId.toLowerCase().trim());
-    if (targetUser?.name) targetSet.add(targetUser.name.trim().toLowerCase());
-    if (targetUser?.username) targetSet.add(targetUser.username.trim().toLowerCase());
-
-    return isLeadAssignedToUser(l, targetSet, targetAssigneeId);
-  };
-
-  // High-performance counts for the Assignee Quick Switcher (Me, All, Unassigned)
-  const assigneeCounts = useMemo(() => {
-    let meCount = 0;
-    let unassignedCount = 0;
-    const allCount = leads.length;
-
-    for (const l of leads) {
-      if (isLeadAssignedToUser(l, myIdentifiers, effectiveUserId)) {
-        meCount++;
-      }
-      if (isLeadUnassigned(l)) {
-        unassignedCount++;
-      }
-    }
-
-    return { me: meCount, unassigned: unassignedCount, all: allCount };
-  }, [leads, myIdentifiers, effectiveUserId]);
-
-  // Base filtered leads: applies district, assignee, and text search
-  const baseFilteredLeads = useMemo(() => {
-    return leads.filter((l) => {
-      if (selectedDistrict !== "ALL") {
-        const dName = l.district || "";
-        if (dName.toLowerCase() !== selectedDistrict.toLowerCase()) return false;
-      }
-
-      if (!isLeadAssignedTo(l, selectedAssignee)) {
+      if (smartPreset === "AI_PRIORITY" && priority.urgencyLevel !== "CRITICAL" && priority.urgencyLevel !== "HIGH")
         return false;
+      if (
+        smartPreset === "CLOSING_FOCUS" &&
+        !["DATA_COLLECTION", "LOGGED_IN", "ADVANCE", "FULL_PAID"].includes(l.status)
+      )
+        return false;
+      if (smartPreset === "OVERDUE" && !priority.isOverdue) return false;
+      if (smartPreset === "TODAY" && !priority.isToday) return false;
+      if (smartPreset === "UNTREATED" && !priority.isUntreated) return false;
+      if (smartPreset === "STALE" && !priority.isStale && !priority.isUntreated) return false;
+      if (smartPreset === "HOT_WARM" && l.score !== "HOT" && l.score !== "WARM") return false;
+      if (smartPreset === "QUALITY" && l.status !== "QUALITY_LEAD") return false;
+      if (smartPreset === "NO_FOLLOWUP" && Boolean(l.nextFollowUpDate)) return false;
+
+      // Granular
+      if (dueDateFilter === "OVERDUE" && !priority.isOverdue) return false;
+      if (dueDateFilter === "TODAY" && !priority.isToday) return false;
+      if (dueDateFilter === "TOMORROW" && priority.dueDaysDiff !== 1) return false;
+      if (dueDateFilter === "THIS_WEEK") {
+        if (priority.dueDaysDiff === null || priority.dueDaysDiff < 0 || priority.dueDaysDiff > 7)
+          return false;
       }
+      if (dueDateFilter === "CUSTOM" && dueDateFrom && dueDateTo) {
+        if (!l.nextFollowUpDate) return false;
+        const d = l.nextFollowUpDate.split("T")[0];
+        if (d < dueDateFrom || d > dueDateTo) return false;
+      }
+
+      if (lastContactedFilter === "UNTREATED" && !priority.isUntreated) return false;
+      if (lastContactedFilter === "STALE_7D" && !priority.isStale && !priority.isUntreated) return false;
+      if (lastContactedFilter === "RECENT_48H" && priority.daysSinceLastContact > 2) return false;
+
+      if (leadScoreFilter !== "ALL" && l.score !== leadScoreFilter) return false;
+
+      if (institutionSizeFilter === "LARGE" && (l.studentCount || 0) < 300) return false;
+      if (
+        institutionSizeFilter === "MEDIUM" &&
+        ((l.studentCount || 0) < 100 || (l.studentCount || 0) >= 300)
+      )
+        return false;
+      if (institutionSizeFilter === "SMALL" && (l.studentCount || 0) >= 100) return false;
 
       if (debouncedSearch.trim()) {
-        const term = debouncedSearch.toLowerCase().trim();
-        const nameMatch = l.name?.toLowerCase().includes(term);
-        const placeMatch = l.place?.toLowerCase().includes(term);
-        const distMatch = l.district?.toLowerCase().includes(term);
-        const contactMatch = l.contacts?.some(
-          (c) => c.name?.toLowerCase().includes(term) || c.phone?.includes(term)
-        );
-        if (!nameMatch && !placeMatch && !distMatch && !contactMatch) return false;
+        const q = debouncedSearch.toLowerCase().trim();
+        const primaryC = l.contacts?.find((c) => c.isPrimary) || l.contacts?.[0];
+        const matchName = l.name?.toLowerCase().includes(q);
+        const matchPlace = l.place?.toLowerCase().includes(q);
+        const matchDistrict = l.district?.toLowerCase().includes(q);
+        const matchContact = primaryC?.name?.toLowerCase().includes(q);
+        const matchPhone = primaryC?.phone?.replace(/[^0-9]/g, "").includes(q.replace(/[^0-9]/g, ""));
+        if (!matchName && !matchPlace && !matchDistrict && !matchContact && !matchPhone) return false;
       }
 
       return true;
     });
-  }, [leads, selectedDistrict, selectedAssignee, debouncedSearch, effectiveUserId, user, assigneeOptions]);
-
-  // Counts for the Preset Chips (Overdue, Due Today, AI Next, etc.)
-  // Evaluated on baseFilteredLeads + activeStage (so if a stage is active, presets show counts for that stage!)
-  const smartCounts = useMemo(() => {
-    const pool = activeStage === "ALL"
-      ? baseFilteredLeads
-      : baseFilteredLeads.filter((l) => l.status === activeStage);
-
-    let aiPriority = 0;
-    let overdue = 0;
-    let today = 0;
-    let untreated = 0;
-    let stale = 0;
-    let hotWarm = 0;
-    let quality = 0;
-    let activeTrials = 0;
-    let noFollowup = 0;
-
-    for (const l of pool) {
-      const priority = calculateLeadSmartPriority(l, myIdentifiers, effectiveUserId);
-      if (l.status !== "WON" && l.status !== "LOST") {
-        if (priority.score >= 80) aiPriority++;
-        if (priority.isOverdue) overdue++;
-        if (priority.isToday) today++;
-        if (priority.isUntreated) untreated++;
-        if (priority.isStale) stale++;
-        if (!l.nextFollowUpDate) noFollowup++;
-        if (l.score === "HOT" || l.score === "WARM") hotWarm++;
-        if (l.status === "QUALITY_LEAD" || l.score === "HOT") quality++;
-      }
-      if (l.status === "TRIAL_SHARED" || l.status === "TRIAL_CREATED" || l.status.includes("TRIAL")) {
-        activeTrials++;
-      }
-    }
-
-    return {
-      all: pool.length,
-      aiPriority,
-      overdue,
-      today,
-      untreated,
-      stale,
-      hotWarm,
-      quality,
-      activeTrials,
-      noFollowup,
-    };
-  }, [baseFilteredLeads, activeStage, myIdentifiers, effectiveUserId]);
-
-  // Counts for the Stage Chips (New, Follow-up, Quality Lead, etc.)
-  const stageCounts = useMemo(() => {
-    const pool = baseFilteredLeads.filter((l) => {
-      const priority = calculateLeadSmartPriority(l, myIdentifiers, effectiveUserId);
-      if (smartPreset === "ALL") return true;
-      if (smartPreset === "AI_PRIORITY") return priority.score >= 80 && l.status !== "WON" && l.status !== "LOST";
-      if (smartPreset === "OVERDUE") return priority.isOverdue;
-      if (smartPreset === "TODAY") return priority.isToday;
-      if (smartPreset === "UNTREATED") return priority.isUntreated;
-      if (smartPreset === "STALE") return priority.isStale;
-      if (smartPreset === "HOT_WARM") return (l.score === "HOT" || l.score === "WARM") && l.status !== "WON" && l.status !== "LOST";
-      if (smartPreset === "QUALITY") return (l.status === "QUALITY_LEAD" || l.score === "HOT") && l.status !== "WON" && l.status !== "LOST";
-      if (smartPreset === "ACTIVE_TRIALS") {
-        return (
-          l.status === "TRIAL_SHARED" ||
-          l.status === "TRIAL_CREATED" ||
-          l.status.includes("TRIAL")
-        );
-      }
-      if (smartPreset === "NO_FOLLOWUP") {
-        return !l.nextFollowUpDate && l.status !== "WON" && l.status !== "LOST";
-      }
-      return true;
-    });
-
-    const counts: Record<string, number> = { ALL: pool.length };
-    LEAD_STATUSES.forEach((s) => {
-      counts[s] = 0;
-    });
-    pool.forEach((l) => {
-      if (counts[l.status] !== undefined) {
-        counts[l.status]++;
-      } else {
-        counts[l.status] = 1;
-      }
-    });
-    return counts;
-  }, [baseFilteredLeads, smartPreset, myIdentifiers, effectiveUserId]);
-
-  const filteredLeads = useMemo(() => {
-    return baseFilteredLeads
-      .filter((l) => {
-        if (activeStage !== "ALL" && l.status !== activeStage) return false;
-
-        const priority = calculateLeadSmartPriority(l, myIdentifiers, effectiveUserId);
-
-        // Smart Presets Filter
-        if (smartPreset === "AI_PRIORITY") {
-          if (l.status === "WON" || l.status === "LOST" || priority.score < 80) return false;
-        } else if (smartPreset === "OVERDUE") {
-          if (!priority.isOverdue) return false;
-        } else if (smartPreset === "TODAY") {
-          if (!priority.isToday) return false;
-        } else if (smartPreset === "UNTREATED") {
-          if (!priority.isUntreated || l.status === "WON" || l.status === "LOST") return false;
-        } else if (smartPreset === "STALE") {
-          if (!priority.isStale || l.status === "WON" || l.status === "LOST") return false;
-        } else if (smartPreset === "HOT_WARM") {
-          if (l.status === "WON" || l.status === "LOST" || (l.score !== "HOT" && l.score !== "WARM")) return false;
-        } else if (smartPreset === "QUALITY") {
-          if (l.status === "WON" || l.status === "LOST" || (l.status !== "QUALITY_LEAD" && l.score !== "HOT")) return false;
-        } else if (smartPreset === "ACTIVE_TRIALS") {
-          if (l.status !== "TRIAL_SHARED" && l.status !== "TRIAL_CREATED" && !l.status.includes("TRIAL")) return false;
-        } else if (smartPreset === "NO_FOLLOWUP") {
-          if (l.nextFollowUpDate || l.status === "WON" || l.status === "LOST") return false;
-        }
-
-        // Due Date Range Filter
-        if (dueDateFilter === "OVERDUE" && !priority.isOverdue) return false;
-        if (dueDateFilter === "TODAY" && !priority.isToday) return false;
-        if (dueDateFilter === "TOMORROW" && priority.dueDaysDiff !== 1) return false;
-        if (dueDateFilter === "THIS_WEEK") {
-          if (priority.dueDaysDiff === null || priority.dueDaysDiff < 0 || priority.dueDaysDiff > 7) return false;
-        }
-        if (dueDateFilter === "NEXT_WEEK") {
-          if (priority.dueDaysDiff === null || priority.dueDaysDiff <= 7 || priority.dueDaysDiff > 14) return false;
-        }
-        if (dueDateFilter === "CUSTOM") {
-          if (dueDateFrom) {
-            if (!l.nextFollowUpDate || l.nextFollowUpDate.split("T")[0] < dueDateFrom) return false;
-          }
-          if (dueDateTo) {
-            if (!l.nextFollowUpDate || l.nextFollowUpDate.split("T")[0] > dueDateTo) return false;
-          }
-        }
-
-        // Last Contacted Filter
-        if (lastContactedFilter === "UNTREATED" && !priority.isUntreated) return false;
-        if (lastContactedFilter === "STALE_7D" && !priority.isStale && !priority.isUntreated) return false;
-        if (lastContactedFilter === "STALE_3D") {
-          const isStale3 = priority.daysSinceLastContact >= 3 || priority.isUntreated;
-          if (!isStale3) return false;
-        }
-        if (lastContactedFilter === "RECENT_48H") {
-          if (priority.daysSinceLastContact < 0 || priority.daysSinceLastContact > 2) return false;
-        }
-
-        // Lead Score Filter
-        if (leadScoreFilter !== "ALL" && l.score !== leadScoreFilter) return false;
-
-        // Institution Size Filter
-        if (institutionSizeFilter === "LARGE" && (l.studentCount || 0) < 300) return false;
-        if (institutionSizeFilter === "MEDIUM" && ((l.studentCount || 0) < 100 || (l.studentCount || 0) >= 300)) return false;
-        if (institutionSizeFilter === "SMALL" && (l.studentCount || 0) >= 100) return false;
-
-        return true;
-      })
-      .sort((a, b) => {
-        if (sortBy === "SMART_PRIORITY") {
-          const priorityA = calculateLeadSmartPriority(a, myIdentifiers, effectiveUserId);
-          const priorityB = calculateLeadSmartPriority(b, myIdentifiers, effectiveUserId);
-          if (priorityB.score !== priorityA.score) return priorityB.score - priorityA.score;
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-        if (sortBy === "URGENT") {
-          const isAClosed = a.status === "WON" || a.status === "LOST";
-          const isBClosed = b.status === "WON" || b.status === "LOST";
-          if (isAClosed && !isBClosed) return 1;
-          if (!isAClosed && isBClosed) return -1;
-
-          const dateA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate).getTime() : Infinity;
-          const dateB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate).getTime() : Infinity;
-          return dateA - dateB;
-        }
-        if (sortBy === "FOLLOWUP_ASC") {
-          const isAClosed = a.status === "WON" || a.status === "LOST";
-          const isBClosed = b.status === "WON" || b.status === "LOST";
-          if (isAClosed && !isBClosed) return 1;
-          if (!isAClosed && isBClosed) return -1;
-
-          const dateA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate).getTime() : Infinity;
-          const dateB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate).getTime() : Infinity;
-          if (dateA !== dateB) return dateA - dateB;
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-        if (sortBy === "FOLLOWUP_DESC") {
-          const isAClosed = a.status === "WON" || a.status === "LOST";
-          const isBClosed = b.status === "WON" || b.status === "LOST";
-          if (isAClosed && !isBClosed) return 1;
-          if (!isAClosed && isBClosed) return -1;
-
-          const dateA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate).getTime() : -Infinity;
-          const dateB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate).getTime() : -Infinity;
-          if (dateA !== dateB) return dateB - dateA;
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-        if (sortBy === "LAST_FOLLOWUP_ASC") {
-          const isAClosed = a.status === "WON" || a.status === "LOST";
-          const isBClosed = b.status === "WON" || b.status === "LOST";
-          if (isAClosed && !isBClosed) return 1;
-          if (!isAClosed && isBClosed) return -1;
-
-          const lastTouchA = a.timeline && a.timeline.length > 0
-            ? new Date(a.timeline[0].createdAt).getTime()
-            : new Date(a.createdAt).getTime();
-          const lastTouchB = b.timeline && b.timeline.length > 0
-            ? new Date(b.timeline[0].createdAt).getTime()
-            : new Date(b.createdAt).getTime();
-          if (lastTouchA !== lastTouchB) return lastTouchA - lastTouchB;
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        }
-        if (sortBy === "LAST_FOLLOWUP_DESC") {
-          const isAClosed = a.status === "WON" || a.status === "LOST";
-          const isBClosed = b.status === "WON" || b.status === "LOST";
-          if (isAClosed && !isBClosed) return 1;
-          if (!isAClosed && isBClosed) return -1;
-
-          const lastTouchA = a.timeline && a.timeline.length > 0
-            ? new Date(a.timeline[0].createdAt).getTime()
-            : new Date(a.createdAt).getTime();
-          const lastTouchB = b.timeline && b.timeline.length > 0
-            ? new Date(b.timeline[0].createdAt).getTime()
-            : new Date(b.createdAt).getTime();
-          if (lastTouchA !== lastTouchB) return lastTouchB - lastTouchA;
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-        if (sortBy === "STATUS_CHANGED_DESC") {
-          const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : new Date(a.createdAt).getTime();
-          const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : new Date(b.createdAt).getTime();
-          return dateB - dateA;
-        }
-        if (sortBy === "STATUS_CHANGED_ASC") {
-          const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : new Date(a.createdAt).getTime();
-          const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : new Date(b.createdAt).getTime();
-          return dateA - dateB;
-        }
-        if (sortBy === "SCORE_DESC") {
-          const scoreWeight = (s?: string) => (s === "HOT" ? 3 : s === "WARM" ? 2 : 1);
-          const diff = scoreWeight(b.score) - scoreWeight(a.score);
-          if (diff !== 0) return diff;
-          return (b.studentCount || 0) - (a.studentCount || 0);
-        }
-        if (sortBy === "NEWEST") {
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-        if (sortBy === "OLDEST") {
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        }
-        if (sortBy === "STUDENTS") {
-          return (b.studentCount || 0) - (a.studentCount || 0);
-        }
-        if (sortBy === "NAME") {
-          return a.name.localeCompare(b.name);
-        }
-        return 0;
-      });
   }, [
     baseFilteredLeads,
     activeStage,
+    selectedDistrict,
     smartPreset,
     dueDateFilter,
     dueDateFrom,
@@ -2137,1903 +804,134 @@ export default function CrmLeadsPage() {
     lastContactedFilter,
     leadScoreFilter,
     institutionSizeFilter,
-    sortBy,
+    debouncedSearch,
     myIdentifiers,
     effectiveUserId,
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredLeads.length / pageSize));
+  const sortedLeads = useMemo(() => {
+    return [...filteredLeads].sort((a, b) => {
+      if (sortBy === "SMART_PRIORITY") {
+        const scoreA = calculateLeadSmartPriority(a, myIdentifiers, effectiveUserId).score;
+        const scoreB = calculateLeadSmartPriority(b, myIdentifiers, effectiveUserId).score;
+        return scoreB - scoreA;
+      }
+      if (sortBy === "URGENT") {
+        const diffA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate).getTime() : Infinity;
+        const diffB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate).getTime() : Infinity;
+        return diffA - diffB;
+      }
+      if (sortBy === "FOLLOWUP_ASC") {
+        const diffA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate).getTime() : Infinity;
+        const diffB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate).getTime() : Infinity;
+        return diffA - diffB;
+      }
+      if (sortBy === "FOLLOWUP_DESC") {
+        const diffA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate).getTime() : -Infinity;
+        const diffB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate).getTime() : -Infinity;
+        return diffB - diffA;
+      }
+      if (sortBy === "STUDENTS") return (b.studentCount || 0) - (a.studentCount || 0);
+      if (sortBy === "NEWEST") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (sortBy === "NAME") return a.name.localeCompare(b.name);
+      return 0;
+    });
+  }, [filteredLeads, sortBy, myIdentifiers, effectiveUserId]);
 
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [totalPages, currentPage]);
-
+  const totalPages = Math.ceil(sortedLeads.length / pageSize) || 1;
   const paginatedLeads = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredLeads.slice(start, start + pageSize);
-  }, [filteredLeads, currentPage, pageSize]);
-
-  // Top smart queue: highest priority leads that need immediate follow-up
-  const aiFollowUpQueue = useMemo(() => {
-    const pool = baseFilteredLeads.filter((l) => l.status !== "WON" && l.status !== "LOST");
-    return pool
-      .map((l) => ({ lead: l, priority: calculateLeadSmartPriority(l, myIdentifiers, effectiveUserId) }))
-      .sort((a, b) => b.priority.score - a.priority.score)
-      .slice(0, 4);
-  }, [baseFilteredLeads, myIdentifiers, effectiveUserId]);
+    return sortedLeads.slice(start, start + pageSize);
+  }, [sortedLeads, currentPage, pageSize]);
 
   const hasActiveFilters =
+    search.trim() !== "" ||
     activeStage !== "ALL" ||
     smartPreset !== "ALL" ||
     selectedDistrict !== "ALL" ||
-    selectedAssignee !== "ME" ||
     dueDateFilter !== "ALL" ||
     lastContactedFilter !== "ALL" ||
     leadScoreFilter !== "ALL" ||
-    institutionSizeFilter !== "ALL" ||
-    search !== "" ||
-    sortBy !== "SMART_PRIORITY";
+    institutionSizeFilter !== "ALL";
 
-  const handleResetAllFilters = () => {
+  const handleResetFilters = () => {
+    setSearch("");
     setActiveStage("ALL");
     setSmartPreset("ALL");
     setSelectedDistrict("ALL");
-    setSelectedAssignee("ME");
     setDueDateFilter("ALL");
     setDueDateFrom("");
     setDueDateTo("");
     setLastContactedFilter("ALL");
     setLeadScoreFilter("ALL");
     setInstitutionSizeFilter("ALL");
-    setSearch("");
-    setSortBy("SMART_PRIORITY");
   };
 
-  // Auto-select first lead on desktop (>= 1024px) if none is currently selected
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.innerWidth >= 1024 && !selectedLeadId && paginatedLeads.length > 0) {
-      setSelectedLeadId(paginatedLeads[0].id);
-    }
-  }, [paginatedLeads, selectedLeadId]);
-
-  const getSmartSuggestion = (lead: LeadDetail) => {
-    const isWon = lead.status === "WON";
-    const isLost = lead.status === "LOST";
-    const nextDate = lead.nextFollowUpDate ? new Date(lead.nextFollowUpDate) : null;
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-
-    let diffDays: number | null = null;
-    if (nextDate) {
-      const nextZero = new Date(nextDate);
-      nextZero.setHours(0, 0, 0, 0);
-      diffDays = Math.round((nextZero.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    }
-
-    if (isWon) {
-      return {
-        tone: "positive" as const,
-        title: "Successfully Converted & Active",
-        actionLabel: "View Madrasa Portal",
-        badge: "Closed Won",
-        description: "Ensure teacher rosters and class divisions are configured. Check initial attendance.",
-        onAction: () => navigate(`/admin/madrasas?search=${encodeURIComponent(lead.name)}`),
-      };
-    }
-
-    if (isLost) {
-      return {
-        tone: "neutral" as const,
-        title: "Deal Closed / Inactive",
-        actionLabel: "Re-engage Prospect",
-        badge: "Lost",
-        description: "Schedule a 30-day touchpoint or send syllabus exam updates to revive interest.",
-        onAction: () => setActiveSection("followup"),
-      };
-    }
-
-    if (diffDays !== null && diffDays < 0) {
-      return {
-        tone: "critical" as const,
-        title: `Follow-up Overdue (${Math.abs(diffDays)}d delayed)`,
-        actionLabel: "Log Call / Update",
-        badge: "Urgent Priority",
-        description: "Prospect is cooling down. Reach out via call or WhatsApp immediately to keep interest active.",
-        onAction: () => setActiveSection("followup"),
-      };
-    }
-
-    if (diffDays !== null && diffDays === 0) {
-      return {
-        tone: "urgent" as const,
-        title: "Action Scheduled for Today",
-        actionLabel: "Log Outcome",
-        badge: "Due Today",
-        description: "Scheduled discussion planned for today. Complete call and record next steps.",
-        onAction: () => setActiveSection("followup"),
-      };
-    }
-
-    if (lead.status === "QUALITY_LEAD") {
-      return {
-        tone: "high_intent" as const,
-        title: "Quality Prospect Identified",
-        actionLabel: "Share Trial / Schedule Demo",
-        badge: "Qualified",
-        description: "Prospect is verified as a Quality Lead. Share sandbox trial access or book a campus demo session.",
-        onAction: () => setActiveSection("demo"),
-      };
-    }
-
-    if (lead.score === "HOT" || lead.score === "READY_TO_CLOSE") {
-      return {
-        tone: "high_intent" as const,
-        title: "High Intent Deal (Hot)",
-        actionLabel: "Launch Demo / Convert",
-        badge: "High Intent",
-        description: "Prospect shows strong buying signals. Propose a product demo or subscription setup.",
-        onAction: () => setActiveSection("convert"),
-      };
-    }
-
-    if (!lead.timeline || lead.timeline.length === 0) {
-      return {
-        tone: "urgent" as const,
-        title: "Untreated Lead — Never Contacted",
-        actionLabel: "Make First Contact",
-        badge: "Untreated",
-        description: "No outreach or follow-up has ever been logged for this institution. Make your first contact via Phone Call or WhatsApp today!",
-        onAction: () => setActiveSection("followup"),
-      };
-    }
-
-    if (!lead.nextFollowUpDate) {
-      return {
-        tone: "warning" as const,
-        title: "No Next Follow-up Scheduled",
-        actionLabel: "Schedule Follow-up",
-        badge: "Needs Schedule",
-        description: "Deals without next dates get lost. Set a target date for the next touchpoint.",
-        onAction: () => setShowFollowUpPicker(true),
-      };
-    }
-
-    return {
-      tone: "neutral" as const,
-      title: "Pipeline On Track",
-      actionLabel: "Log Interaction",
-      badge: "In Progress",
-      description: `Next outreach scheduled for ${nextDate ? nextDate.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "future"}.`,
-      onAction: () => setActiveSection("followup"),
-    };
-  };
-
-  const getFollowUpStatus = (dateStr?: string) => {
-    if (!dateStr) return { label: "No Date Set", urgency: "none", badgeClass: "bg-gray-100 text-gray-600 border-gray-200" };
-    const target = new Date(dateStr);
-    target.setHours(0, 0, 0, 0);
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const diffDays = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) {
-      return {
-        label: `Overdue ${Math.abs(diffDays)}d`,
-        urgency: "overdue",
-        badgeClass: "bg-rose-50 text-rose-800 border-rose-200 font-bold",
-      };
-    }
-    if (diffDays === 0) {
-      return {
-        label: "Due Today",
-        urgency: "today",
-        badgeClass: "bg-amber-50 text-amber-800 border-amber-200 font-bold",
-      };
-    }
-    if (diffDays === 1) {
-      return {
-        label: "Tomorrow",
-        urgency: "upcoming",
-        badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200",
-      };
-    }
-    return {
-      label: `In ${diffDays} days`,
-      urgency: "upcoming",
-      badgeClass: "bg-slate-100 text-slate-700 border-slate-200",
-    };
-  };
-
-  const renderStatusBadge = (status: string) => (
-    <span
-      className={cn(
-        "text-xs font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider inline-block",
-        STATUS_COLORS[status] || "bg-gray-100 text-gray-700 border-gray-200"
-      )}
-    >
-      {LEAD_STATUS_LABELS[status] ?? status.replace(/_/g, " ")}
-    </span>
-  );
-
-  const renderScoreBadge = (score: string) => (
-    <span
-      className={cn(
-        "text-xs font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider inline-flex items-center gap-1",
-        SCORE_COLORS[score] || "bg-gray-100 text-gray-700 border-gray-200"
-      )}
-    >
-      {score === "HOT" && "🔥"}
-      {score === "WARM" && "⚡"}
-      {score === "COLD" && "❄️"}
-      {score || "COLD"}
-    </span>
-  );
-
-  // ── Render Detail View Content (Desktop right pane & Mobile Sheet) ─────────
-  const renderDetailContent = () => {
-    if (!selectedLead) return null;
-    const lead = selectedLead;
-    const isWon = lead.status === "WON";
-    const currentStepIdx = PIPELINE_STEPS.findIndex((s) => s.statuses.includes(lead.status));
-    const latestActivity = lead.timeline && lead.timeline.length > 0 ? lead.timeline[0] : null;
-    const followUpStatus = getFollowUpStatus(lead.nextFollowUpDate);
-    const primaryContact = lead.contacts?.find((c) => c.isPrimary) || lead.contacts?.[0];
-
-    const cleanPrimaryPhone = primaryContact?.phone?.replace(/[^0-9]/g, "") || "";
-    const waPrimaryPhone =
-      cleanPrimaryPhone.length === 10 ? `91${cleanPrimaryPhone}` : cleanPrimaryPhone;
-
-    const cleanAltPhone = primaryContact?.secondaryPhone?.replace(/[^0-9]/g, "") || "";
-    const waAltPhone = cleanAltPhone.length === 10 ? `91${cleanAltPhone}` : cleanAltPhone;
-
-    return (
-      <div className="space-y-5 pb-8">
-        {/* ── Institutional Header & Stage Stepper ── */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-200/90 shadow-xs space-y-4">
-          {/* Main Title & Action Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-gray-100">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight truncate">
-                  {lead.name}
-                </h2>
-                <span className="text-xs font-bold text-primary-800 bg-primary-50 border border-primary-200 px-2.5 py-0.5 rounded-lg shrink-0">
-                  {lead.type || "Madrasa"}
-                </span>
-                {lead.place && (
-                  <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-lg shrink-0">
-                    📍 {lead.place}
-                    {lead.district ? `, ${lead.district}` : ""}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Right Action Controls */}
-            <div className="flex items-center gap-2 shrink-0 flex-wrap">
-              <div className="flex items-center gap-1.5 bg-white border border-gray-200/90 rounded-xl px-2.5 py-1 shadow-2xs min-h-[38px]">
-                <span className="text-[11px] uppercase font-bold text-gray-500">Stage:</span>
-                <select
-                  value={lead.status}
-                  onChange={(e) => handleUpdateStage(e.target.value, lead.id)}
-                  disabled={actionLoading}
-                  className="text-xs font-bold text-gray-800 bg-transparent focus:outline-none cursor-pointer"
-                >
-                  {LEAD_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {LEAD_STATUS_LABELS[s] ?? s.replace(/_/g, " ")}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {renderScoreBadge(lead.score)}
-
-              <button
-                type="button"
-                onClick={() => handleStartEditLead(lead)}
-                className="min-h-[38px] px-3.5 py-1.5 text-xs font-bold rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 shadow-2xs transition-all flex items-center gap-1.5 active:scale-95 shrink-0"
-                title="Edit Lead Details"
-              >
-                <Pencil className="w-3.5 h-3.5 text-blue-600" />
-                <span>Edit Lead</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Sub-header Metadata Bar: Assignee & Creator */}
-          <div className="flex items-center justify-between gap-3 text-xs bg-slate-50/80 border border-slate-200/70 rounded-2xl p-2.5 sm:px-3.5 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-gray-500 flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-primary-600" />
-                Assigned:
-              </span>
-              {(() => {
-                const isDetailMine = isLeadAssignedToUser(lead as any, myIdentifiers, effectiveUserId);
-                return (
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {isDetailMine ? (
-                      <span className="font-extrabold text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2.5 py-0.5 rounded-lg flex items-center gap-1 shadow-2xs">
-                        <span>⭐ Assigned to You</span>
-                      </span>
-                    ) : lead.contributors && lead.contributors.length > 0 ? (
-                      <span className="font-bold text-gray-900 bg-white border border-gray-200/80 px-2.5 py-0.5 rounded-lg shadow-2xs">
-                        {lead.contributors.map((c) => c.user?.name).filter(Boolean).join(", ")}
-                      </span>
-                    ) : (
-                      <span className="font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg flex items-center gap-1">
-                        ⚠️ Unassigned
-                      </span>
-                    )}
-
-                    {!isDetailMine && (
-                      <button
-                        type="button"
-                        disabled={actionLoading}
-                        onClick={() => handleSelfClaimLead(lead.id)}
-                        className="min-h-[28px] px-2.5 py-0.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-1 shadow-2xs active:scale-95 disabled:opacity-50"
-                      >
-                        <Sparkles className="w-3 h-3" />
-                        <span>Assign to Me</span>
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setQuickAssignUserId(lead.contributors?.[0]?.userId || effectiveUserId || assigneeOptions[0]?.id || "");
-                        setShowQuickAssignModal(true);
-                      }}
-                      className="min-h-[28px] px-2.5 py-0.5 text-xs font-bold rounded-lg border border-primary-200 bg-white hover:bg-primary-50 text-primary-700 transition-all flex items-center gap-1 shadow-2xs active:scale-95"
-                    >
-                      <Users className="w-3 h-3 text-primary-600" />
-                      <span>{lead.contributors && lead.contributors.length > 0 ? "Reassign" : "Assign Rep"}</span>
-                    </button>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {lead.createdBy && (
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <span>Created by <strong className="text-gray-800 font-bold">{lead.createdBy}</strong></span>
-                <span>•</span>
-                <span className="text-gray-400">
-                  {new Date(lead.createdAt).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Pipeline Stepper */}
-          <div className="space-y-1.5">
-            <span className="text-xs uppercase font-bold text-gray-500 tracking-wider">
-              Pipeline Stage:
-            </span>
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin py-1">
-              {PIPELINE_STEPS.map((step, i) => {
-                const isActive = step.statuses.includes(lead.status);
-                const isDone = i < currentStepIdx || (isWon && step.key === "won");
-                return (
-                  <div key={step.key} className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateStage(step.statuses[0])}
-                      className={cn(
-                        "min-h-[36px] px-3 py-1.5 text-xs font-bold rounded-xl transition-all border shrink-0 flex items-center gap-1.5 active:scale-95",
-                        isActive
-                          ? "bg-primary-600 text-white border-primary-600 shadow-2xs font-black"
-                          : isDone
-                          ? "bg-primary-50 text-primary-800 border-primary-200 hover:bg-primary-100"
-                          : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
-                      )}
-                    >
-                      {isDone && !isActive && <Check className="w-3.5 h-3.5 text-primary-600 shrink-0" />}
-                      <span>{step.label}</span>
-                    </button>
-                    {i < PIPELINE_STEPS.length - 1 && (
-                      <ChevronRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Institutional Overview Stats Strip */}
-          <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-200/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-            <div className="bg-white p-2.5 rounded-xl border border-gray-200/70 shadow-2xs">
-              <span className="block text-[11px] uppercase font-bold text-gray-400">Students</span>
-              <span className="text-sm sm:text-base font-black text-gray-900">{lead.studentCount || "—"}</span>
-            </div>
-            <div className="bg-white p-2.5 rounded-xl border border-gray-200/70 shadow-2xs">
-              <span className="block text-[11px] uppercase font-bold text-gray-400">Teachers</span>
-              <span className="text-sm sm:text-base font-black text-gray-900">{lead.teacherCount || "—"}</span>
-            </div>
-            <div className="bg-white p-2.5 rounded-xl border border-gray-200/70 shadow-2xs">
-              <span className="block text-[11px] uppercase font-bold text-gray-400">Curriculum</span>
-              <span className="text-sm sm:text-base font-bold text-gray-800 truncate block">{lead.type || "Madrasa"}</span>
-            </div>
-            <div className="bg-white p-2.5 rounded-xl border border-gray-200/70 shadow-2xs">
-              <span className="block text-[11px] uppercase font-bold text-gray-400">Software</span>
-              <span className="text-sm sm:text-base font-bold text-gray-800 truncate block">{lead.existingSoftware || "None"}</span>
-            </div>
-          </div>
-
-          {/* Primary Contact & Follow-up Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
-            {/* Box 1: Primary Contact */}
-            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/80 space-y-2.5 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between pb-1.5 border-b border-gray-200/60">
-                  <span className="text-xs uppercase font-bold text-gray-500 flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-blue-600" /> Primary Contact
-                  </span>
-                  {primaryContact?.role && (
-                    <span className="text-[11px] font-bold text-gray-700 bg-gray-200/80 px-2 py-0.5 rounded-md">
-                      {primaryContact.role}
-                    </span>
-                  )}
-                </div>
-
-                <p className="text-sm font-black text-gray-900 truncate mt-2">
-                  {primaryContact?.name || "Name not specified"}
-                </p>
-
-                {primaryContact?.phone ? (
-                  <div className="mt-2 pt-2 border-t border-dashed border-gray-200 flex items-center justify-between gap-2 flex-wrap">
-                    <span className="font-mono font-bold text-xs sm:text-sm text-gray-900">
-                      {primaryContact.phone}
-                    </span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <a
-                        href={`tel:${primaryContact.phone}`}
-                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1 shadow-2xs transition-all active:scale-95"
-                        title="Call Phone"
-                      >
-                        <Phone className="w-3.5 h-3.5" />
-                        <span>Call</span>
-                      </a>
-                      <a
-                        href={`https://wa.me/${waPrimaryPhone}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs flex items-center gap-1 shadow-2xs transition-all active:scale-95"
-                        title="Chat on WhatsApp"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        <span>WhatsApp</span>
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(primaryContact.phone!, primaryContact.phone!)}
-                        className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100"
-                        title="Copy phone"
-                      >
-                        {copiedText === primaryContact.phone ? (
-                          <Check className="w-4 h-4 text-primary-600" />
-                        ) : (
-                          <Copy className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 italic mt-1">No primary phone recorded</p>
-                )}
-
-                {primaryContact?.secondaryPhone && (
-                  <div className="mt-2 pt-2 border-t border-dashed border-gray-200 flex items-center justify-between gap-2 flex-wrap">
-                    <div className="min-w-0">
-                      <span className="text-[10px] uppercase font-bold text-gray-400 block">Alt Phone:</span>
-                      <span className="font-mono font-bold text-xs sm:text-sm text-gray-800">
-                        {primaryContact.secondaryPhone}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <a
-                        href={`tel:${primaryContact.secondaryPhone}`}
-                        className="min-h-[32px] px-2 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center gap-1 border border-blue-200 transition-all active:scale-95"
-                        title="Call Alt Phone"
-                      >
-                        <Phone className="w-3 h-3" />
-                        <span>Call</span>
-                      </a>
-                      <a
-                        href={`https://wa.me/${waAltPhone}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="min-h-[32px] px-2 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-1 border border-emerald-200 transition-all active:scale-95"
-                        title="WhatsApp Alt Phone"
-                      >
-                        <MessageSquare className="w-3 h-3" />
-                        <span>WA</span>
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(primaryContact.secondaryPhone!, primaryContact.secondaryPhone!)}
-                        className="p-1 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100"
-                        title="Copy alt phone"
-                      >
-                        {copiedText === primaryContact.secondaryPhone ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Box 2: Next Follow-up Schedule */}
-            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/80 space-y-2.5 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between pb-1.5 border-b border-gray-200/60">
-                  <span className="text-xs uppercase font-bold text-gray-500 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-amber-600" /> Next Follow-up
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowFollowUpPicker(!showFollowUpPicker);
-                      setQuickFollowUpDate(
-                        lead.nextFollowUpDate ? lead.nextFollowUpDate.split("T")[0] : ""
-                      );
-                    }}
-                    className="min-h-[32px] px-2.5 py-1 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl flex items-center gap-1 transition-all active:scale-95"
-                  >
-                    <CalendarClock className="w-3.5 h-3.5" />
-                    <span>{lead.nextFollowUpDate ? "Change Date" : "+ Set Date"}</span>
-                  </button>
-                </div>
-
-                <div className="mt-3">
-                  <span
-                    className={cn(
-                      "text-xs px-3.5 py-2 rounded-xl border inline-flex items-center gap-2 w-full justify-between font-bold shadow-2xs",
-                      followUpStatus.badgeClass
-                    )}
-                  >
-                    <span className="truncate">{followUpStatus.label}</span>
-                    {followUpStatus.urgency === "overdue" && (
-                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                    )}
-                    {followUpStatus.urgency === "today" && (
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
-                    )}
-                    {followUpStatus.urgency === "upcoming" && (
-                      <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
-                    )}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Inline Follow-up Date Picker Popover */}
-          <AnimatePresence>
-            {showFollowUpPicker && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="mt-3 p-4 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
-                      <CalendarClock className="w-4 h-4 text-emerald-600" /> Update Next Follow-up Date
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowFollowUpPicker(false)}
-                      className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Preset Pills */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    {[
-                      { label: "Today", days: 0 },
-                      { label: "Tomorrow", days: 1 },
-                      { label: "In 3 Days", days: 3 },
-                      { label: "Next Week", days: 7 },
-                      { label: "In 2 Weeks", days: 14 },
-                    ].map((preset) => {
-                      const target = new Date();
-                      target.setDate(target.getDate() + preset.days);
-                      const isoDate = target.toISOString().split("T")[0];
-                      return (
-                        <button
-                          key={preset.label}
-                          type="button"
-                          disabled={followUpSaving}
-                          onClick={() => {
-                            setQuickFollowUpDate(isoDate);
-                            handleQuickUpdateFollowUp(isoDate, lead.id, quickFollowUpRemarks);
-                          }}
-                          className={cn(
-                            "min-h-[38px] px-3.5 py-1.5 text-xs font-bold rounded-xl border transition-all active:scale-95 disabled:opacity-50",
-                            quickFollowUpDate === isoDate
-                              ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
-                              : "bg-white hover:bg-gray-100 text-gray-700 border-gray-200"
-                          )}
-                        >
-                          {preset.label}
-                        </button>
-                      );
-                    })}
-
-                    {lead.nextFollowUpDate && (
-                      <button
-                        type="button"
-                        onClick={() => handleQuickUpdateFollowUp(null, lead.id)}
-                        disabled={followUpSaving}
-                        className="min-h-[38px] px-3 py-1 text-xs font-bold rounded-xl border border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100 transition-all ml-auto"
-                      >
-                        Clear Schedule
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Optional Follow-up Remarks */}
-                  <div>
-                    <input
-                      type="text"
-                      placeholder="Remarks / discussion note for this follow-up (optional)..."
-                      value={quickFollowUpRemarks}
-                      onChange={(e) => setQuickFollowUpRemarks(e.target.value)}
-                      className="w-full bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl focus:outline-none focus:border-emerald-600 font-medium text-gray-800 placeholder:text-gray-400"
-                    />
-                  </div>
-
-                  {/* Custom Date Input & Submit */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <input
-                      type="date"
-                      value={quickFollowUpDate}
-                      onChange={(e) => setQuickFollowUpDate(e.target.value)}
-                      className="min-h-[44px] flex-1 bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl focus:outline-none focus:border-emerald-600 font-semibold"
-                    />
-                    <button
-                      type="button"
-                      disabled={followUpSaving || (!quickFollowUpDate && !quickFollowUpRemarks.trim())}
-                      onClick={() => handleQuickUpdateFollowUp(quickFollowUpDate || lead.nextFollowUpDate || null, lead.id, quickFollowUpRemarks)}
-                      className="min-h-[44px] px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center gap-2"
-                    >
-                      {followUpSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                      Save Date
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* ── Tabs Navigation Bar (Fully responsive on mobile & desktop) ── */}
-        <div className="flex items-center gap-1 sm:gap-2 p-1 sm:p-1.5 bg-gray-100 rounded-2xl border border-gray-200 text-xs sm:text-sm font-bold">
-          <button
-            type="button"
-            onClick={() => setActiveLeadTab("activity")}
-            className={cn(
-              "flex-1 min-h-[42px] sm:min-h-[44px] py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-2 select-none",
-              activeLeadTab === "activity"
-                ? "bg-white text-gray-900 shadow-xs font-black border border-gray-200"
-                : "text-gray-600 hover:text-gray-900"
-            )}
-          >
-            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
-            <span className="hidden sm:inline">Activity &amp; Notes</span>
-            <span className="sm:hidden text-xs font-bold whitespace-nowrap">Activity</span>
-            <span className="text-[10px] sm:text-[11px] px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-800 font-bold shrink-0">
-              {lead.timeline?.length ?? 0}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveLeadTab("details")}
-            className={cn(
-              "flex-1 min-h-[42px] sm:min-h-[44px] py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-2 select-none",
-              activeLeadTab === "details"
-                ? "bg-white text-gray-900 shadow-xs font-black border border-gray-200"
-                : "text-gray-600 hover:text-gray-900"
-            )}
-          >
-            <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0" />
-            <span className="hidden sm:inline">Institution Profile</span>
-            <span className="sm:hidden text-xs font-bold whitespace-nowrap">Profile</span>
-            <span className="text-[10px] sm:text-[11px] px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-800 font-bold shrink-0">
-              {lead.contacts?.length ?? 0}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveLeadTab("pipeline")}
-            className={cn(
-              "flex-1 min-h-[42px] sm:min-h-[44px] py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-2 select-none",
-              activeLeadTab === "pipeline"
-                ? "bg-white text-gray-900 shadow-xs font-black border border-gray-200"
-                : "text-gray-600 hover:text-gray-900"
-            )}
-          >
-            <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-violet-600 shrink-0" />
-            <span className="hidden sm:inline">Pipeline &amp; Setup</span>
-            <span className="sm:hidden text-xs font-bold whitespace-nowrap">Pipeline</span>
-          </button>
-        </div>
-
-        {/* ══════════════════════════════════════════════════════════════════════ */}
-        {/* TAB 1: ACTIVITY & FOLLOW-UPS                                           */}
-        {/* ══════════════════════════════════════════════════════════════════════ */}
-        {activeLeadTab === "activity" && (
-          <div className="space-y-4">
-            {/* AI Suggestion Banner */}
-            {(() => {
-              const suggestion = getSmartSuggestion(lead);
-              const toneClasses = {
-                critical: "bg-rose-50 border-rose-200 text-rose-900",
-                urgent: "bg-amber-50 border-amber-200 text-amber-900",
-                high_intent: "bg-violet-50 border-violet-200 text-violet-900",
-                warning: "bg-yellow-50 border-yellow-200 text-yellow-900",
-                positive: "bg-emerald-50 border-emerald-200 text-emerald-900",
-                neutral: "bg-blue-50 border-blue-200 text-blue-900",
-              }[suggestion.tone];
-
-              const toneBtn = {
-                critical: "bg-rose-600 hover:bg-rose-700 text-white",
-                urgent: "bg-amber-600 hover:bg-amber-700 text-white",
-                high_intent: "bg-violet-600 hover:bg-violet-700 text-white",
-                warning: "bg-amber-600 hover:bg-amber-700 text-white",
-                positive: "bg-emerald-600 hover:bg-emerald-700 text-white",
-                neutral: "bg-blue-600 hover:bg-blue-700 text-white",
-              }[suggestion.tone];
-
-              return (
-                <div
-                  className={cn(
-                    "p-5 rounded-3xl border shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all",
-                    toneClasses
-                  )}
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-                      <span className="text-xs uppercase font-black tracking-wider text-gray-500">
-                        Operational Intelligence
-                      </span>
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-white/80 border border-gray-200">
-                        {suggestion.badge}
-                      </span>
-                    </div>
-                    <h3 className="text-base font-black text-gray-900">{suggestion.title}</h3>
-                    <p className="text-xs sm:text-sm text-gray-700 max-w-xl leading-relaxed">
-                      {suggestion.description}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={suggestion.onAction}
-                    className={cn(
-                      "min-h-[44px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold shrink-0 transition-all shadow-xs active:scale-95 flex items-center gap-2",
-                      toneBtn
-                    )}
-                  >
-                    <Zap className="w-4 h-4" />
-                    <span>{suggestion.actionLabel}</span>
-                  </button>
-                </div>
-              );
-            })()}
-
-            {/* Quick Action Buttons */}
-            <div className="grid grid-cols-3 gap-2.5">
-              <button
-                type="button"
-                onClick={() => setActiveSection(activeSection === "followup" ? null : "followup")}
-                className={cn(
-                  "min-h-[48px] flex flex-col items-center justify-center p-3 rounded-2xl border text-center gap-1 transition-all active:scale-[0.98]",
-                  activeSection === "followup"
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                    : "bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
-                )}
-              >
-                <Phone className="w-4 h-4" />
-                <span className="text-xs font-bold">Log Follow-up</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveSection(activeSection === "demo" ? null : "demo")}
-                disabled={isWon}
-                className={cn(
-                  "min-h-[48px] flex flex-col items-center justify-center p-3 rounded-2xl border text-center gap-1 transition-all active:scale-[0.98] disabled:opacity-40",
-                  activeSection === "demo"
-                    ? "bg-violet-600 text-white border-violet-600 shadow-sm"
-                    : "bg-violet-50 text-violet-800 border-violet-200 hover:bg-violet-100"
-                )}
-              >
-                <Calendar className="w-4 h-4" />
-                <span className="text-xs font-bold">Log Demo</span>
-              </button>
-
-              {!isWon ? (
-                <button
-                  type="button"
-                  onClick={handleProvisionTrial}
-                  disabled={actionLoading || lead.status === "TRIAL_CREATED"}
-                  className="min-h-[48px] flex flex-col items-center justify-center p-3 rounded-2xl border text-center gap-1 transition-all bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 active:scale-[0.98] disabled:opacity-40"
-                >
-                  <Play className="w-4 h-4" />
-                  <span className="text-xs font-bold">
-                    {lead.status === "TRIAL_CREATED" ? "Trial Active" : "Launch Trial"}
-                  </span>
-                </button>
-              ) : (
-                <div className="min-h-[48px] flex flex-col items-center justify-center p-3 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-center gap-1">
-                  <CheckCircle className="w-4 h-4 text-emerald-600" />
-                  <span className="text-xs font-bold">Won Account ✓</span>
-                </div>
-              )}
-            </div>
-
-            {/* Convert to Paying Client Button */}
-            {!isWon && (
-              <button
-                type="button"
-                onClick={() => setActiveSection(activeSection === "convert" ? null : "convert")}
-                className={cn(
-                  "w-full min-h-[48px] flex items-center justify-center gap-2 py-3 rounded-2xl border font-black text-sm sm:text-base transition-all active:scale-[0.98] shadow-xs",
-                  activeSection === "convert"
-                    ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                    : "bg-indigo-50 text-indigo-900 border-indigo-200 hover:bg-indigo-100"
-                )}
-              >
-                <DollarSign className="w-5 h-5 text-indigo-700" />
-                <span>Convert to Paying Madrasa Subscription</span>
-              </button>
-            )}
-
-            {/* ── Inline Follow-up Form ── */}
-            <AnimatePresence>
-              {activeSection === "followup" && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <form
-                    onSubmit={handleLogActivity}
-                    className="bg-blue-50/60 border border-blue-200 rounded-3xl p-5 space-y-4 shadow-2xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-black text-blue-900">Record Outreach &amp; Follow-up</h4>
-                      <button
-                        type="button"
-                        onClick={() => setActiveSection(null)}
-                        className="p-1 text-gray-400 hover:text-gray-600"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                          Channel / Type
-                        </label>
-                        <select
-                          value={activityForm.type}
-                          onChange={(e) => setActivityForm((p) => ({ ...p, type: e.target.value }))}
-                          className="w-full min-h-[44px] bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl focus:outline-none focus:border-blue-600 font-semibold"
-                        >
-                          {ACTIVITY_TYPES.map((t) => (
-                            <option key={t.value} value={t.value}>
-                              {t.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                          Next Follow-up Date
-                        </label>
-                        <input
-                          type="date"
-                          value={activityForm.followUpDate}
-                          onChange={(e) =>
-                            setActivityForm((p) => ({ ...p, followUpDate: e.target.value }))
-                          }
-                          className="w-full min-h-[44px] bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl focus:outline-none focus:border-blue-600 font-semibold"
-                        />
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                          {[
-                            { label: "Tomorrow", days: 1 },
-                            { label: "In 3 Days", days: 3 },
-                            { label: "Next Week", days: 7 },
-                          ].map((p) => {
-                            const t = new Date();
-                            t.setDate(t.getDate() + p.days);
-                            const dStr = t.toISOString().split("T")[0];
-                            return (
-                              <button
-                                key={p.label}
-                                type="button"
-                                onClick={() => setActivityForm((prev) => ({ ...prev, followUpDate: dStr }))}
-                                className={cn(
-                                  "px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all active:scale-95",
-                                  activityForm.followUpDate === dStr
-                                    ? "bg-blue-600 text-white border-blue-600"
-                                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100"
-                                )}
-                              >
-                                {p.label}
-                              </button>
-                            );
-                          })}
-                          {activityForm.followUpDate && (
-                            <button
-                              type="button"
-                              onClick={() => setActivityForm((prev) => ({ ...prev, followUpDate: "" }))}
-                              className="px-2 py-1 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 ml-auto"
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quick Outcome Disposition Selector */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        ⚡ Quick Follow-up Outcome (1-tap note):
-                      </label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {OUTCOME_DISPOSITIONS.map((disp) => (
-                          <button
-                            key={disp.label}
-                            type="button"
-                            onClick={() => {
-                              setActivityForm((p) => {
-                                const prefix = `[${disp.label}] `;
-                                const notes = p.notes.trim() ? `${p.notes} • ${disp.text}` : `${prefix}${disp.text}`;
-                                return { ...p, notes };
-                              });
-                            }}
-                            className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-white border border-blue-200 text-blue-900 hover:bg-blue-100 hover:border-blue-300 transition-all flex items-center gap-1 active:scale-95 shadow-2xs"
-                          >
-                            <span>{disp.icon}</span>
-                            <span>{disp.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Discussion Summary &amp; Key Notes *
-                      </label>
-                      <textarea
-                        required
-                        rows={3}
-                        value={activityForm.notes}
-                        onChange={(e) => setActivityForm((p) => ({ ...p, notes: e.target.value }))}
-                        placeholder="What happened? Key points discussed with Sadr Usthad or Committee..."
-                        className="w-full bg-white border border-gray-200 text-xs sm:text-sm p-3.5 rounded-xl focus:outline-none focus:border-blue-600 resize-none leading-relaxed"
-                      />
-                    </div>
-
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setActiveSection(null)}
-                        className="min-h-[44px] px-5 bg-white border border-gray-200 text-gray-700 text-xs sm:text-sm font-bold rounded-xl hover:bg-gray-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={actionLoading}
-                        className="min-h-[44px] flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
-                      >
-                        {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                        Save Follow-up Log
-                      </button>
-                    </div>
-                  </form>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* ── Inline Demo Form ── */}
-            <AnimatePresence>
-              {activeSection === "demo" && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <form
-                    onSubmit={handleLogDemo}
-                    className="bg-violet-50/60 border border-violet-200 rounded-3xl p-5 space-y-4 shadow-2xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-black text-violet-900">Record Demo Session</h4>
-                      <button
-                        type="button"
-                        onClick={() => setActiveSection(null)}
-                        className="p-1 text-gray-400 hover:text-gray-600"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                          Demo Date &amp; Time *
-                        </label>
-                        <input
-                          type="datetime-local"
-                          required
-                          value={demoForm.date}
-                          onChange={(e) => setDemoForm((p) => ({ ...p, date: e.target.value }))}
-                          className="w-full min-h-[44px] bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl focus:outline-none focus:border-violet-600 font-semibold"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                          Mode
-                        </label>
-                        <select
-                          value={demoForm.type}
-                          onChange={(e) => setDemoForm((p) => ({ ...p, type: e.target.value }))}
-                          className="w-full min-h-[44px] bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl focus:outline-none font-semibold"
-                        >
-                          <option value="Online">Online Video Call / Remote</option>
-                          <option value="Site-Visit">In-Person Campus Site Visit</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Outcome / Decision
-                      </label>
-                      <select
-                        value={demoForm.outcome}
-                        onChange={(e) => setDemoForm((p) => ({ ...p, outcome: e.target.value }))}
-                        className="w-full min-h-[44px] bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl focus:outline-none font-bold"
-                      >
-                        <option value="INTERESTED">✅ Highly Interested — Moving Forward</option>
-                        <option value="NEED_FOLLOW_UP">🔁 Needs Another Touchpoint</option>
-                        <option value="NEED_COMMITTEE_APPROVAL">📋 Committee Review Pending</option>
-                        <option value="TRIAL_REQUESTED">🧪 Requested Sandbox Trial</option>
-                        <option value="NOT_INTERESTED">❌ Not Moving Forward</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Attendees (comma-separated)
-                      </label>
-                      <input
-                        type="text"
-                        value={demoForm.attendees}
-                        onChange={(e) => setDemoForm((p) => ({ ...p, attendees: e.target.value }))}
-                        placeholder="e.g. Sadr Usthad, Secretary, 4 Teachers"
-                        className="w-full min-h-[44px] bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Demo Notes
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={demoForm.notes}
-                        onChange={(e) => setDemoForm((p) => ({ ...p, notes: e.target.value }))}
-                        placeholder="Features shown, reactions, questions raised..."
-                        className="w-full bg-white border border-gray-200 text-xs sm:text-sm p-3.5 rounded-xl focus:outline-none resize-none leading-relaxed"
-                      />
-                    </div>
-
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setActiveSection(null)}
-                        className="min-h-[44px] px-5 bg-white border border-gray-200 text-gray-700 text-xs sm:text-sm font-bold rounded-xl hover:bg-gray-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={actionLoading}
-                        className="min-h-[44px] flex-1 bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs sm:text-sm py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
-                      >
-                        {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                        Save Demo Details
-                      </button>
-                    </div>
-                  </form>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* ── Inline Convert Form ── */}
-            <AnimatePresence>
-              {activeSection === "convert" && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <form
-                    onSubmit={handleConvertLead}
-                    className="bg-indigo-50/60 border border-indigo-200 rounded-3xl p-5 space-y-4 shadow-2xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-black text-indigo-900">
-                        Convert to Paying Client &amp; Allocate Splits
-                      </h4>
-                      <button
-                        type="button"
-                        onClick={() => setActiveSection(null)}
-                        className="p-1 text-gray-400 hover:text-gray-600"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Subdomain Slug *
-                      </label>
-                      <input
-                        required
-                        type="text"
-                        value={convertForm.subdomain}
-                        onChange={(e) =>
-                          setConvertForm((p) => ({
-                            ...p,
-                            subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ""),
-                          }))
-                        }
-                        className="w-full min-h-[44px] bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl focus:outline-none font-mono"
-                      />
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Live Web App: <span className="font-mono font-bold text-indigo-800">{convertForm.subdomain}.smartmadrasa.app</span>
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                          Admin Name *
-                        </label>
-                        <input
-                          required
-                          type="text"
-                          value={convertForm.adminName}
-                          onChange={(e) => setConvertForm((p) => ({ ...p, adminName: e.target.value }))}
-                          className="w-full min-h-[44px] bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl focus:outline-none"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                          Admin Login (Phone/ID) *
-                        </label>
-                        <input
-                          required
-                          type="text"
-                          value={convertForm.adminIdentifier}
-                          onChange={(e) =>
-                            setConvertForm((p) => ({ ...p, adminIdentifier: e.target.value }))
-                          }
-                          className="w-full min-h-[44px] bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                          Initial Password *
-                        </label>
-                        <input
-                          required
-                          type="text"
-                          value={convertForm.adminPassword}
-                          onChange={(e) =>
-                            setConvertForm((p) => ({ ...p, adminPassword: e.target.value }))
-                          }
-                          className="w-full min-h-[44px] bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl font-mono focus:outline-none"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                          Amount Paid (₹) *
-                        </label>
-                        <input
-                          required
-                          type="number"
-                          value={convertForm.amountPaid}
-                          onChange={(e) =>
-                            setConvertForm((p) => ({ ...p, amountPaid: Number(e.target.value) }))
-                          }
-                          className="w-full min-h-[44px] bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl font-bold focus:outline-none"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                          Commission %
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={convertForm.commissionPercentage}
-                          onChange={(e) =>
-                            setConvertForm((p) => ({ ...p, commissionPercentage: Number(e.target.value) }))
-                          }
-                          className="w-full min-h-[44px] bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl font-bold focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs sm:text-sm text-emerald-900 space-y-1">
-                      <p className="font-bold">Commission Projection</p>
-                      <p className="text-xs">
-                        {convertForm.commissionPercentage}% of ₹{convertForm.amountPaid.toLocaleString("en-IN")} ={" "}
-                        <strong>
-                          ₹{Math.round((convertForm.amountPaid * convertForm.commissionPercentage) / 100).toLocaleString("en-IN")}
-                        </strong>
-                        {" "}split across {lead.contributors?.length || 1} sales contributor(s)
-                      </p>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setActiveSection(null)}
-                        className="min-h-[44px] px-5 bg-white border border-gray-200 text-gray-700 text-xs sm:text-sm font-bold rounded-xl hover:bg-gray-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={actionLoading}
-                        className="min-h-[44px] flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
-                      >
-                        {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
-                        Activate Subscription
-                      </button>
-                    </div>
-                  </form>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* ── Chronological Interaction Timeline ── */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                <h3 className="text-xs sm:text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-blue-600" />
-                  Interaction Logs &amp; Audit
-                </h3>
-                <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg">
-                  {lead.timeline?.length ?? 0} log{lead.timeline?.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-
-              {(!lead.timeline || lead.timeline.length === 0) && (
-                <div className="p-8 text-center border border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
-                  <Clock className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600 font-bold">No interactions logged yet</p>
-                  <p className="text-xs text-gray-400 mt-1">Use the quick actions above to record phone calls, meetings, or notes.</p>
-                </div>
-              )}
-
-              {lead.timeline?.map((item) => {
-                const isEditing = editingTimelineId === item.id;
-                return (
-                  <div key={item.id} className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-2xs space-y-2 group">
-                    {isEditing ? (
-                      <form onSubmit={handleSaveEditTimeline} className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2">
-                          <select
-                            value={editTimelineForm.type}
-                            onChange={(e) =>
-                              setEditTimelineForm((p) => ({ ...p, type: e.target.value }))
-                            }
-                            className="bg-gray-50 border border-gray-200 text-xs py-2 px-2.5 rounded-xl font-bold"
-                          >
-                            {ACTIVITY_TYPES.map((t) => (
-                              <option key={t.value} value={t.value}>
-                                {t.label}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            type="date"
-                            value={editTimelineForm.followUpDate}
-                            onChange={(e) =>
-                              setEditTimelineForm((p) => ({ ...p, followUpDate: e.target.value }))
-                            }
-                            className="bg-gray-50 border border-gray-200 text-xs py-2 px-2.5 rounded-xl font-medium"
-                          />
-                        </div>
-                        <textarea
-                          required
-                          rows={2}
-                          value={editTimelineForm.notes}
-                          onChange={(e) =>
-                            setEditTimelineForm((p) => ({ ...p, notes: e.target.value }))
-                          }
-                          className="w-full bg-gray-50 border border-gray-200 text-xs p-3 rounded-xl focus:outline-none resize-none"
-                        />
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            type="button"
-                            onClick={() => setEditingTimelineId(null)}
-                            className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-xl"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            disabled={timelineActionLoading}
-                            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl"
-                          >
-                            Save
-                          </button>
-                        </div>
-                      </form>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span
-                              className={cn(
-                                "font-bold px-2 py-0.5 rounded-lg uppercase tracking-wider text-[11px]",
-                                item.type === "CALL"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : item.type === "WHATSAPP"
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : item.type === "MEETING"
-                                  ? "bg-violet-100 text-violet-800"
-                                  : item.type === "SITE_VISIT"
-                                  ? "bg-amber-100 text-amber-800"
-                                  : "bg-gray-100 text-gray-800"
-                              )}
-                            >
-                              {item.type === "CALL"
-                                ? "📞 Call"
-                                : item.type === "WHATSAPP"
-                                ? "💬 WhatsApp"
-                                : item.type === "MEETING"
-                                ? "🤝 Meeting"
-                                : item.type === "SITE_VISIT"
-                                ? "🏫 Campus Visit"
-                                : item.type}
-                            </span>
-                            <span className="font-semibold text-gray-700">
-                              {new Date(item.createdAt).toLocaleDateString("en-IN", {
-                                day: "numeric",
-                                month: "short",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                            <span className="text-[11px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.2 rounded border border-gray-200">
-                              {formatRelativeTime(item.createdAt)}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleStartEditTimeline(item)}
-                              className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50"
-                              title="Edit"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteTimeline(item.id)}
-                              className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
-                              title="Delete"
-                            >
-                              <Trash className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        <p className="text-xs sm:text-sm text-gray-900 leading-relaxed font-medium whitespace-pre-wrap bg-gray-50/50 p-2.5 rounded-xl border border-gray-100">
-                          {item.notes}
-                        </p>
-
-                        <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 flex-wrap gap-2">
-                          <span className="flex items-center gap-1">
-                            <span>Logged by:</span> <strong className="text-gray-800 font-bold">{item.user?.name ?? "System / Admin"}</strong>
-                          </span>
-                          {item.followUpDate && (
-                            <span className="text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200 font-bold flex items-center gap-1 text-[11px]">
-                              <Clock className="w-3 h-3 text-emerald-600" />
-                              Scheduled Follow-up: {new Date(item.followUpDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                            </span>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════════ */}
-        {/* TAB 2: INSTITUTION PROFILE & CONTACTS                                  */}
-        {/* ══════════════════════════════════════════════════════════════════════ */}
-        {activeLeadTab === "details" && (
-          <div className="space-y-4">
-            {/* Institution Profile Card */}
-            <div className="bg-white border border-gray-200/90 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <h3 className="text-xs sm:text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-primary-600" />
-                  Institutional Parameters
-                </h3>
-                <span className="text-xs font-bold text-primary-800 bg-primary-50 px-2.5 py-0.5 rounded-lg border border-primary-200">
-                  {lead.type || "Madrasa"}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs sm:text-sm">
-                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-200/80">
-                  <span className="block text-xs uppercase font-bold text-gray-400">Total Students</span>
-                  <span className="font-black text-gray-900 text-base">{lead.studentCount || "—"}</span>
-                </div>
-                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-200/80">
-                  <span className="block text-xs uppercase font-bold text-gray-400">Total Teachers</span>
-                  <span className="font-black text-gray-900 text-base">{lead.teacherCount || "—"}</span>
-                </div>
-                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-200/80">
-                  <span className="block text-xs uppercase font-bold text-gray-400">Current Software</span>
-                  <span className="font-bold text-gray-800 text-xs truncate block" title={lead.existingSoftware || "None"}>
-                    {lead.existingSoftware || "None (Registers)"}
-                  </span>
-                </div>
-                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-200/80">
-                  <span className="block text-xs uppercase font-bold text-gray-400">District</span>
-                  <span className="font-bold text-gray-900">{lead.district || "—"}</span>
-                </div>
-                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-200/80">
-                  <span className="block text-xs uppercase font-bold text-gray-400">Place / Area</span>
-                  <span className="font-bold text-gray-900">{lead.place || "—"}</span>
-                </div>
-                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-200/80">
-                  <span className="block text-xs uppercase font-bold text-gray-400">Lead Source</span>
-                  <span className="font-bold text-gray-900 uppercase text-xs">
-                    {lead.source?.replace(/_/g, " ") || "Direct"}
-                  </span>
-                </div>
-              </div>
-
-              {lead.address && (
-                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-200/80">
-                  <span className="block text-xs uppercase font-bold text-gray-400 mb-1">Campus Address</span>
-                  <p className="text-xs sm:text-sm text-gray-800 font-medium leading-relaxed">{lead.address}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Key Contacts List */}
-            <div className="bg-white border border-gray-200/90 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <h3 className="text-xs sm:text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                  <Users className="w-4 h-4 text-blue-600" />
-                  Key Decision Makers &amp; Contacts
-                </h3>
-                <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg">
-                  {lead.contacts?.length ?? 0} contact{lead.contacts?.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-
-              {lead.contacts && lead.contacts.length > 0 ? (
-                <div className="space-y-3">
-                  {lead.contacts.map((c, idx) => (
-                    <div
-                      key={c.id || idx}
-                      className="p-4 rounded-2xl border border-gray-200/80 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-black text-gray-900 text-sm sm:text-base">
-                            {c.name || <span className="text-gray-400 italic">No name provided</span>}
-                          </span>
-                          {c.role && (
-                            <span className="text-xs font-bold text-gray-700 bg-gray-200 px-2.5 py-0.5 rounded-full">
-                              {c.role}
-                            </span>
-                          )}
-                          {c.isPrimary && (
-                            <span className="text-xs font-black text-emerald-800 bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                              Primary
-                            </span>
-                          )}
-                        </div>
-
-                        {c.phone && (() => {
-                          const cleanPhone = c.phone.replace(/[^0-9]/g, "");
-                          const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-                          return (
-                            <div className="flex items-center gap-3 text-xs sm:text-sm pt-1 flex-wrap">
-                              <span className="font-mono font-bold text-gray-900">{c.phone}</span>
-                              <div className="flex items-center gap-2">
-                                <a
-                                  href={`tel:${c.phone}`}
-                                  className="min-h-[38px] px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs inline-flex items-center gap-1 shadow-2xs"
-                                >
-                                  <Phone className="w-3.5 h-3.5" /> Call
-                                </a>
-                                <a
-                                  href={`https://wa.me/${waPhone}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center gap-1 shadow-2xs"
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
-                                </a>
-                                <button
-                                  type="button"
-                                  onClick={() => copyToClipboard(c.phone!, c.phone!)}
-                                  className="p-2 text-gray-400 hover:text-gray-700"
-                                >
-                                  {copiedText === c.phone ? (
-                                    <Check className="w-4 h-4 text-emerald-600" />
-                                  ) : (
-                                    <Copy className="w-4 h-4" />
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })()}
-
-                        {c.secondaryPhone && (() => {
-                          const cleanAlt = c.secondaryPhone.replace(/[^0-9]/g, "");
-                          const waAlt = cleanAlt.length === 10 ? `91${cleanAlt}` : cleanAlt;
-                          return (
-                            <div className="flex items-center gap-3 text-xs sm:text-sm pt-2 border-t border-dashed border-gray-200 flex-wrap">
-                              <span className="font-mono font-bold text-gray-700">
-                                Alt: {c.secondaryPhone}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <a
-                                  href={`tel:${c.secondaryPhone}`}
-                                  className="min-h-[34px] px-2.5 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs inline-flex items-center gap-1 border border-blue-200"
-                                >
-                                  <Phone className="w-3 h-3" /> Call Alt
-                                </a>
-                                <a
-                                  href={`https://wa.me/${waAlt}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="min-h-[34px] px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs inline-flex items-center gap-1 border border-emerald-200"
-                                >
-                                  <MessageSquare className="w-3 h-3" /> WhatsApp
-                                </a>
-                                <button
-                                  type="button"
-                                  onClick={() => copyToClipboard(c.secondaryPhone!, c.secondaryPhone!)}
-                                  className="p-1.5 text-gray-400 hover:text-gray-700"
-                                >
-                                  {copiedText === c.secondaryPhone ? (
-                                    <Check className="w-4 h-4 text-emerald-600" />
-                                  ) : (
-                                    <Copy className="w-4 h-4" />
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-6 text-center border border-dashed border-gray-200 rounded-2xl">
-                  <p className="text-xs text-gray-400 italic">No contact persons added yet.</p>
-                </div>
-              )}
-            </div>
-
-            {/* Attribution Split */}
-            {lead.contributors && lead.contributors.length > 0 && (
-              <div className="bg-white border border-gray-200/90 rounded-3xl p-5 sm:p-6 shadow-xs space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                  <h3 className="text-xs sm:text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                    <Award className="w-4 h-4 text-emerald-600" />
-                    Commission Attribution
-                  </h3>
-                  <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                    Total: {lead.commissionPercentage ?? 20}%
-                  </span>
-                </div>
-                <div className="divide-y divide-gray-100">
-                  {lead.contributors.map((c) => (
-                    <div key={c.id} className="py-2.5 flex items-center justify-between text-xs sm:text-sm">
-                      <span className="font-bold text-gray-900">{c.user?.name ?? "Sales Rep"}</span>
-                      <span className="font-black text-emerald-800 text-sm sm:text-base font-mono">
-                        {c.percentage}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════════ */}
-        {/* TAB 3: PIPELINE, DEMOS & SETUP                                         */}
-        {/* ══════════════════════════════════════════════════════════════════════ */}
-        {activeLeadTab === "pipeline" && (
-          <div className="space-y-4">
-            {/* Demos History */}
-            {lead.demos && lead.demos.length > 0 && (
-              <div className="bg-white rounded-3xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                  <h3 className="text-xs sm:text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-violet-600" />
-                    Demonstration History
-                  </h3>
-                  <span className="text-xs font-bold text-violet-800 bg-violet-50 px-2.5 py-1 rounded-lg">
-                    {lead.demos.length} session{lead.demos.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-                <div className="space-y-3">
-                  {lead.demos.map((demo) => (
-                    <div key={demo.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-200/80 space-y-2">
-                      <div className="flex items-center justify-between text-xs sm:text-sm">
-                        <span className="font-bold text-gray-900">
-                          {new Date(demo.date).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <span className="bg-gray-200 text-gray-700 text-xs font-bold px-2 py-0.5 rounded">
-                            {demo.type}
-                          </span>
-                          <span className="bg-violet-100 text-violet-800 text-xs font-bold px-2 py-0.5 rounded">
-                            {demo.outcome}
-                          </span>
-                        </div>
-                      </div>
-                      {demo.notes && <p className="text-xs text-gray-600 leading-relaxed">{demo.notes}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Trial Credentials */}
-            {lead.trialMonitoring && (
-              <div className="bg-white rounded-3xl border border-amber-200 p-5 sm:p-6 shadow-xs space-y-3">
-                <h3 className="text-xs sm:text-sm font-black text-amber-900 uppercase tracking-wider flex items-center gap-2">
-                  <Play className="w-4 h-4 text-amber-600" />
-                  Sandbox Trial Telemetry
-                </h3>
-                <div className="grid grid-cols-2 gap-3 text-xs sm:text-sm">
-                  <div className="bg-amber-50/60 rounded-2xl p-4 border border-amber-200">
-                    <span className="block text-xs uppercase font-bold text-amber-800">Health Score</span>
-                    <span className="font-black text-amber-950 text-lg">{lead.trialMonitoring.healthScore}</span>
-                  </div>
-                  <div className="bg-amber-50/60 rounded-2xl p-4 border border-amber-200">
-                    <span className="block text-xs uppercase font-bold text-amber-800">Active Logins (7d)</span>
-                    <span className="font-black text-amber-950 text-lg">{lead.trialMonitoring.loginFrequency}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Onboarding Checklist */}
-            {lead.onboardingProject && (
-              <div className="bg-white rounded-3xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                  <h3 className="text-xs sm:text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-primary-600" />
-                    Onboarding Progress — {Math.round(lead.onboardingProject.progress)}%
-                  </h3>
-                  <span className="text-xs font-bold text-primary-800 bg-primary-50 px-2.5 py-1 rounded-lg border border-primary-200">
-                    {lead.onboardingProject.checklist.filter(c => c.status === "COMPLETED").length} / {lead.onboardingProject.checklist.length} Completed
-                  </span>
-                </div>
-                <div className="w-full bg-gray-100 rounded-full h-2">
-                  <div
-                    className="bg-primary-600 h-2 rounded-full transition-all"
-                    style={{ width: `${lead.onboardingProject.progress}%` }}
-                  />
-                </div>
-                <div className="divide-y divide-gray-100 pt-1">
-                  {lead.onboardingProject.checklist.map((item) => (
-                    <div key={item.id} className="py-2 flex items-center gap-2.5 text-xs sm:text-sm">
-                      <div
-                        className={cn(
-                          "w-5 h-5 rounded-full flex items-center justify-center shrink-0",
-                          item.status === "COMPLETED" ? "bg-primary-600 text-white" : "border-2 border-gray-300"
-                        )}
-                      >
-                        {item.status === "COMPLETED" && <Check className="w-3 h-3 text-white" />}
-                      </div>
-                      <span
-                        className={cn(
-                          "font-semibold",
-                          item.status === "COMPLETED" ? "line-through text-gray-400" : "text-gray-800"
-                        )}
-                      >
-                        {item.title}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Danger Zone: Delete Lead */}
-            {canDelete && (
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => handleDeleteLead(lead.id)}
-                  className="w-full min-h-[44px] py-3 text-rose-700 border border-rose-200 bg-rose-50/50 hover:bg-rose-100 rounded-2xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2"
-                >
-                  <Trash className="w-4 h-4" />
-                  <span>Delete Lead Permanently</span>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
+  const importConfig = useMemo(() => {
+    return createCrmImportConfig(async (items) => {
+      if (!accessToken) return;
+      await bulkImportLeads(items, accessToken);
+      toast(`Successfully imported ${items.length} records!`);
+      loadData(true);
+    });
+  }, [accessToken, toast, loadData]);
+
+  const canDelete = user?.actorType === "SUPER_ADMIN" || user?.role === "admin";
 
   return (
     <DashboardLayout>
-      <div>
-        {/* Responsive Mobile Sheet & Desktop Dialog for Stage Change */}
+      <div className="space-y-4">
+        {/* Toast */}
         <AnimatePresence>
-          {cardStatusPickerId && (
-            <div
-              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-xs p-0 sm:p-4"
-              onClick={() => setCardStatusPickerId(null)}
+          {toastMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className={cn(
+                "fixed top-4 right-4 z-50 px-4 py-2.5 rounded-2xl shadow-xl text-xs sm:text-sm font-bold flex items-center gap-2 border",
+                toastMessage.isError
+                  ? "bg-rose-50 border-rose-300 text-rose-900"
+                  : "bg-emerald-50 border-emerald-300 text-emerald-950"
+              )}
             >
-              <motion.div
-                initial={{ y: "100%", opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: "100%", opacity: 0 }}
-                transition={{ type: "spring", damping: 26, stiffness: 320 }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[85vh] flex flex-col"
-              >
-                <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4 sm:hidden" />
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                  <div>
-                    <h3 className="text-base font-black text-gray-900">Change Pipeline Stage</h3>
-                    <p className="text-xs text-gray-500 font-medium">
-                      {leads.find((x) => x.id === cardStatusPickerId)?.name || "Select stage"}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setCardStatusPickerId(null)}
-                    className="p-2 text-gray-400 hover:text-gray-700 rounded-xl"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <div className="overflow-y-auto py-2 space-y-1.5 max-h-[55vh] scrollbar-thin">
-                  {LEAD_STATUSES.map((st) => {
-                    const activeLead = leads.find((l) => l.id === cardStatusPickerId);
-                    const isCur = activeLead?.status === st;
-                    return (
-                      <button
-                        key={st}
-                        type="button"
-                        onClick={async () => {
-                          const targetId = cardStatusPickerId;
-                          setCardStatusPickerId(null);
-                          await handleUpdateStage(st, targetId);
-                        }}
-                        className={cn(
-                          "w-full min-h-[46px] px-4 py-2.5 rounded-2xl text-sm font-bold flex items-center justify-between transition-all",
-                          isCur
-                            ? "bg-emerald-50 text-emerald-800 border-2 border-emerald-500 shadow-2xs"
-                            : "hover:bg-gray-50 text-gray-700 border border-gray-100"
-                        )}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span
-                            className={cn(
-                              "text-xs font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider",
-                              STATUS_COLORS[st] || "bg-gray-100 text-gray-700 border-gray-200"
-                            )}
-                          >
-                            {LEAD_STATUS_LABELS[st] ?? st}
-                          </span>
-                        </div>
-                        {isCur && <Check className="w-5 h-5 text-emerald-600 font-black shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCardStatusPickerId(null)}
-                  className="w-full min-h-[44px] mt-2 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-2xl transition-all"
-                >
-                  Cancel
-                </button>
-              </motion.div>
-            </div>
+              <span>{toastMessage.isError ? "⚠️" : "✓"}</span>
+              <span>{toastMessage.text}</span>
+            </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Persistent CRM Sub-Navigation */}
+        {/* CRM Sub Navigation */}
         <CrmSubNav />
 
-        {/* ── Main Header ── */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
+        {/* ── Top Header: Title & Direct Action Buttons ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-              Leads &amp; Sales Pipeline
+            <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+              <span>Leads &amp; Sales Funnel</span>
+              <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-primary-100 text-primary-800 border border-primary-200">
+                {leads.length} records
+              </span>
             </h1>
-            <p className="text-gray-500 text-xs sm:text-sm mt-1">
-              Active madrasa prospects · {leads.length} total institutional records
+            <p className="text-xs text-gray-500 mt-0.5">
+              Portfolio view for <strong className="text-gray-800">{user?.name || "Representative"}</strong>
             </p>
           </div>
-          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setShowImportModal(true)}
-              className="flex-1 sm:flex-none min-h-[44px] inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold text-xs sm:text-sm px-4 py-2.5 rounded-2xl transition-all shadow-xs active:scale-[0.98]"
+              className="min-h-[42px] px-3.5 py-2 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs"
             >
               <Upload className="w-4 h-4 text-emerald-600" />
-              <span>Import Contacts</span>
+              <span>Import</span>
             </button>
+
             <button
               type="button"
-              onClick={handleOpenAddLead}
-              className="flex-1 sm:flex-none min-h-[44px] inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-2xl transition-all shadow-sm active:scale-[0.98]"
+              onClick={handleOpenCreateDrawer}
+              className="min-h-[42px] px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all shadow-xs active:scale-95"
             >
               <Plus className="w-4 h-4" />
               <span>Add Lead</span>
@@ -4041,2735 +939,437 @@ export default function CrmLeadsPage() {
           </div>
         </div>
 
-        {/* ── Search & Filter Suite (Desktop & Mobile Friendly) ── */}
-        <div className="bg-white rounded-3xl border border-gray-200/90 p-4 sm:p-5 shadow-xs space-y-3.5 mb-5">
-          {/* ── Assignee Quick Switcher (Me, All, Unassigned) ── */}
-          <div className="flex items-center justify-between gap-2 flex-wrap pb-3 border-b border-gray-100">
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 -mx-1 px-1 touch-pan-x">
-              <button
-                type="button"
-                onClick={() => setSelectedAssignee("ME")}
-                className={cn(
-                  "min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all border flex items-center gap-1.5 shadow-2xs active:scale-95",
-                  selectedAssignee === "ME"
-                    ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                    : "bg-white text-gray-700 border-gray-200/90 hover:bg-gray-50 hover:border-gray-300"
-                )}
-              >
-                <span>⭐ Assigned to Me</span>
-                <span
-                  className={cn(
-                    "px-1.5 py-0.5 rounded-full text-[10px] font-black leading-none",
-                    selectedAssignee === "ME" ? "bg-emerald-700 text-white" : "bg-emerald-50 text-emerald-800"
-                  )}
-                >
-                  {assigneeCounts.me}
-                </span>
-              </button>
+        {/* ── Streamlined Single Toolbar (No Heavy Chip Tracks) ── */}
+        <LeadToolbar
+          search={search}
+          setSearch={setSearch}
+          selectedAssignee={selectedAssignee}
+          setSelectedAssignee={setSelectedAssignee}
+          assigneeCounts={assigneeCounts}
+          activeStage={activeStage}
+          setActiveStage={setActiveStage}
+          stageCounts={stageCounts}
+          smartPreset={smartPreset}
+          setSmartPreset={setSmartPreset}
+          smartCounts={smartCounts}
+          selectedDistrict={selectedDistrict}
+          setSelectedDistrict={setSelectedDistrict}
+          availableDistricts={availableDistricts}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          hasActiveFilters={hasActiveFilters}
+          onResetFilters={handleResetFilters}
+          showAdvancedFilters={showAdvancedFilters}
+          setShowAdvancedFilters={setShowAdvancedFilters}
+          dueDateFilter={dueDateFilter}
+          setDueDateFilter={setDueDateFilter}
+          dueDateFrom={dueDateFrom}
+          setDueDateFrom={setDueDateFrom}
+          dueDateTo={dueDateTo}
+          setDueDateTo={setDueDateTo}
+          lastContactedFilter={lastContactedFilter}
+          setLastContactedFilter={setLastContactedFilter}
+          leadScoreFilter={leadScoreFilter}
+          setLeadScoreFilter={setLeadScoreFilter}
+          institutionSizeFilter={institutionSizeFilter}
+          setInstitutionSizeFilter={setInstitutionSizeFilter}
+        />
 
-              <button
-                type="button"
-                onClick={() => setSelectedAssignee("ALL")}
-                className={cn(
-                  "min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all border flex items-center gap-1.5 shadow-2xs active:scale-95",
-                  selectedAssignee === "ALL"
-                    ? "bg-gray-900 text-white border-gray-900 shadow-xs"
-                    : "bg-white text-gray-700 border-gray-200/90 hover:bg-gray-50 hover:border-gray-300"
-                )}
-              >
-                <span>🌐 All Leads</span>
-                <span
-                  className={cn(
-                    "px-1.5 py-0.5 rounded-full text-[10px] font-black leading-none",
-                    selectedAssignee === "ALL" ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-700"
-                  )}
-                >
-                  {assigneeCounts.all}
+        {/* ── Split Layout: Master List & Detail Panel ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Left Column: Lead List Cards */}
+          <div
+            className={cn(
+              "w-full lg:col-span-5 xl:col-span-4 2xl:col-span-4 relative flex flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs",
+              "lg:sticky lg:top-6 lg:max-h-[calc(100vh-2.5rem)] lg:overflow-hidden"
+            )}
+          >
+            {/* Header: Select All & Counts */}
+            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={paginatedLeads.length > 0 && paginatedLeads.every((l) => selectedLeadIds.has(l.id))}
+                  onChange={(e) => {
+                    const next = new Set(selectedLeadIds);
+                    if (e.target.checked) paginatedLeads.forEach((l) => next.add(l.id));
+                    else paginatedLeads.forEach((l) => next.delete(l.id));
+                    setSelectedLeadIds(next);
+                  }}
+                  className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 cursor-pointer"
+                  title="Select all on this page"
+                />
+                <span className="text-xs font-black text-gray-700 uppercase tracking-wider">
+                  {smartPreset !== "ALL"
+                    ? smartPreset.replace(/_/g, " ")
+                    : activeStage === "ALL"
+                    ? "All Leads"
+                    : LEAD_STATUS_LABELS[activeStage as LeadStatus] ?? activeStage}
                 </span>
-              </button>
+              </div>
+              <span className="text-xs font-bold bg-primary-50 text-primary-800 px-2.5 py-0.5 rounded-full border border-primary-200">
+                {filteredLeads.length} records
+              </span>
+            </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedAssignee("UNASSIGNED")}
-                className={cn(
-                  "min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all border flex items-center gap-1.5 shadow-2xs active:scale-95",
-                  selectedAssignee === "UNASSIGNED"
-                    ? "bg-amber-600 text-white border-amber-600 shadow-xs"
-                    : "bg-white text-gray-700 border-gray-200/90 hover:bg-gray-50 hover:border-gray-300"
-                )}
-              >
-                <span>⚠️ Unassigned</span>
-                <span
-                  className={cn(
-                    "px-1.5 py-0.5 rounded-full text-[10px] font-black leading-none",
-                    selectedAssignee === "UNASSIGNED" ? "bg-amber-700 text-white" : "bg-amber-50 text-amber-800"
+            {/* List Container: natural document flow on mobile, scrollable on desktop */}
+            <div className="p-3 sm:p-3.5 space-y-3 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:scrollbar-thin">
+              {loading && (
+                <div className="py-16 text-center text-gray-400 flex flex-col items-center justify-center gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
+                  <span className="text-xs font-semibold">Loading prospects...</span>
+                </div>
+              )}
+
+              {!loading && filteredLeads.length === 0 && (
+                <div className="py-16 text-center text-gray-400 flex flex-col items-center justify-center gap-2 px-4">
+                  <div className="w-12 h-12 rounded-2xl bg-gray-100 text-gray-500 flex items-center justify-center">
+                    <Inbox className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-bold text-gray-700">No leads match criteria</p>
+                  <p className="text-xs text-gray-500 max-w-xs">
+                    Try clearing filters or switching scope to view all prospects.
+                  </p>
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      onClick={handleResetFilters}
+                      className="mt-2 text-xs font-bold text-primary-600 underline"
+                    >
+                      Reset all filters
+                    </button>
                   )}
-                >
-                  {assigneeCounts.unassigned}
-                </span>
-              </button>
+                </div>
+              )}
 
-              {selectedAssignee !== "ME" && selectedAssignee !== "ALL" && selectedAssignee !== "UNASSIGNED" && (
-                <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary-50 border border-primary-200 text-primary-900 text-xs font-bold shrink-0">
-                  <Users className="w-3.5 h-3.5 text-primary-600" />
-                  <span>{assigneeOptions.find((u) => u.id === selectedAssignee)?.name || "Teammate"}</span>
+              {!loading &&
+                paginatedLeads.map((lead) => (
+                  <LeadCard
+                    key={lead.id}
+                    lead={lead}
+                    isSelected={selectedLeadId === lead.id}
+                    isChecked={selectedLeadIds.has(lead.id)}
+                    onSelect={selectLead}
+                    onToggleCheck={(id, checked) => {
+                      const next = new Set(selectedLeadIds);
+                      if (checked) next.add(id);
+                      else next.delete(id);
+                      setSelectedLeadIds(next);
+                    }}
+                    myIdentifiers={myIdentifiers}
+                    effectiveUserId={effectiveUserId}
+                    onFastUpdateStatus={handleUpdateStage}
+                    onFastScheduleFollowUp={handleQuickUpdateFollowUp}
+                    onSelfClaim={handleSelfClaim}
+                  />
+                ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="p-3 border-t border-gray-100 bg-white flex items-center justify-between shrink-0 text-xs">
+                <span className="text-gray-500 font-medium">
+                  Page <strong className="text-gray-800">{currentPage}</strong> of {totalPages}
+                </span>
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setSelectedAssignee("ME")}
-                    className="ml-1 p-0.5 hover:bg-primary-100 rounded-full text-primary-600"
-                    title="Return to My Leads"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                    className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-40"
                   >
-                    <X className="w-3 h-3" />
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-40"
+                  >
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
-              )}
-            </div>
-
-            <span className="text-[11px] font-bold text-gray-500 hidden sm:inline">
-              Portfolio view for: <strong className="text-gray-900 font-extrabold">{user?.name || "Your Account"}</strong>
-            </span>
-          </div>
-
-          {/* Top Row: Search Input + Selects + Filters Toggle */}
-          <div className="grid grid-cols-12 gap-2 sm:gap-2.5">
-            <div className="relative col-span-9 sm:col-span-12 lg:col-span-4">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search madrasa, place, district, phone..."
-                className="w-full min-h-[44px] pl-10 pr-9 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 transition-all font-medium text-gray-900"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-            <div className="col-span-3 sm:col-span-4 md:col-span-2 lg:col-span-1 flex items-center">
-              <button
-                type="button"
-                onClick={() => setShowAdvancedFilters((p) => !p)}
-                className={cn(
-                  "w-full min-h-[44px] px-2 py-2 rounded-2xl text-xs font-bold border transition-all flex items-center justify-center gap-1 active:scale-95",
-                  showAdvancedFilters || (dueDateFilter !== "ALL" || lastContactedFilter !== "ALL" || leadScoreFilter !== "ALL" || institutionSizeFilter !== "ALL")
-                    ? "bg-primary-50 text-primary-900 border-primary-300 shadow-2xs font-black"
-                    : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                )}
-                title="Toggle advanced filters"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-primary-600 shrink-0" />
-                <span className="hidden xs:inline sm:inline">Filters</span>
-                {(dueDateFilter !== "ALL" || lastContactedFilter !== "ALL" || leadScoreFilter !== "ALL" || institutionSizeFilter !== "ALL") && (
-                  <span className="w-2 h-2 rounded-full bg-primary-600 shrink-0" />
-                )}
-                {showAdvancedFilters ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
-              </button>
-            </div>
-
-            <div className="col-span-6 sm:col-span-4 md:col-span-3 lg:col-span-2">
-              <select
-                value={selectedDistrict}
-                onChange={(e) => setSelectedDistrict(e.target.value)}
-                className="w-full min-h-[42px] sm:min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2 px-2.5 sm:px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
-              >
-                <option value="ALL">Districts ({availableDistricts.length})</option>
-                {availableDistricts.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="col-span-6 sm:col-span-4 md:col-span-3 lg:col-span-2">
-              <select
-                value={selectedAssignee}
-                onChange={(e) => setSelectedAssignee(e.target.value)}
-                className="w-full min-h-[42px] sm:min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2 px-2.5 sm:px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
-              >
-                <option value="ALL">All Assignees</option>
-                <option value="ME">⭐ Mine ({user?.name || "You"})</option>
-                <option value="UNASSIGNED">⚠️ Unassigned</option>
-                {assigneeOptions
-                  .filter((u) => u.id !== effectiveUserId)
-                  .map((u) => (
-                    <option key={u.id} value={u.id}>
-                      👤 {u.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            <div className="col-span-12 sm:col-span-4 md:col-span-4 lg:col-span-3">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="w-full min-h-[42px] sm:min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2 px-2.5 sm:px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
-              >
-                <option value="SMART_PRIORITY">⭐ AI Smart Queue (Recommended)</option>
-                <option value="URGENT">🚨 Urgency (Overdue &amp; Today First)</option>
-                <option value="FOLLOWUP_ASC">📅 Follow-up Due (Earliest First)</option>
-                <option value="FOLLOWUP_DESC">📅 Follow-up Due (Latest First)</option>
-                <option value="LAST_FOLLOWUP_ASC">⏳ Last Followed Up (Oldest First)</option>
-                <option value="LAST_FOLLOWUP_DESC">⚡ Last Followed Up (Recent First)</option>
-                <option value="STATUS_CHANGED_DESC">🔄 Status Changed (Newest First)</option>
-                <option value="STATUS_CHANGED_ASC">🔄 Status Changed (Oldest First)</option>
-                <option value="SCORE_DESC">🔥 Deal Quality (Hot → Warm → Cold)</option>
-                <option value="STUDENTS">🏫 Madrasa Size (Highest Students)</option>
-                <option value="NEWEST">✨ Newest Prospect Added</option>
-                <option value="OLDEST">📜 Oldest Prospect Added</option>
-                <option value="NAME">🔤 Name (A-Z)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* ── Advanced Filters Drawer ── */}
-          <AnimatePresence>
-            {showAdvancedFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="pt-3 pb-2 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-gray-50/70 p-4 rounded-2xl border border-gray-200/70">
-                  {/* Due Date Presets & Range */}
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-amber-600" /> Follow-up Due:
-                    </label>
-                    <select
-                      value={dueDateFilter}
-                      onChange={(e) => setDueDateFilter(e.target.value as any)}
-                      className="w-full min-h-[38px] bg-white border border-gray-200 text-xs font-semibold py-1.5 px-2.5 rounded-xl text-gray-800"
-                    >
-                      <option value="ALL">All Due Dates</option>
-                      <option value="OVERDUE">🚨 Overdue Only</option>
-                      <option value="TODAY">⏱️ Due Today</option>
-                      <option value="TOMORROW">📅 Due Tomorrow</option>
-                      <option value="THIS_WEEK">🗓️ Due This Week (Next 7d)</option>
-                      <option value="NEXT_WEEK">🗓️ Due Next Week</option>
-                      <option value="CUSTOM">🎯 Custom Date Range...</option>
-                    </select>
-
-                    {dueDateFilter === "CUSTOM" && (
-                      <div className="grid grid-cols-2 gap-1.5 pt-1.5">
-                        <input
-                          type="date"
-                          value={dueDateFrom}
-                          onChange={(e) => setDueDateFrom(e.target.value)}
-                          placeholder="From"
-                          className="bg-white border border-gray-200 text-xs p-1 rounded-lg"
-                        />
-                        <input
-                          type="date"
-                          value={dueDateTo}
-                          onChange={(e) => setDueDateTo(e.target.value)}
-                          placeholder="To"
-                          className="bg-white border border-gray-200 text-xs p-1 rounded-lg"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Last Followed Up / Staleness */}
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
-                      <History className="w-3 h-3 text-blue-600" /> Last Contacted / Activity:
-                    </label>
-                    <select
-                      value={lastContactedFilter}
-                      onChange={(e) => setLastContactedFilter(e.target.value as any)}
-                      className="w-full min-h-[38px] bg-white border border-gray-200 text-xs font-semibold py-1.5 px-2.5 rounded-xl text-gray-800"
-                    >
-                      <option value="ALL">All Activity</option>
-                      <option value="UNTREATED">⚡ Untreated (Never Contacted)</option>
-                      <option value="STALE_7D">⏳ Stale: Untouched &gt; 7 Days</option>
-                      <option value="STALE_3D">⏳ Untouched &gt; 3 Days</option>
-                      <option value="RECENT_48H">✨ Contacted within 48 Hours</option>
-                    </select>
-                  </div>
-
-                  {/* Lead Quality / Score */}
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
-                      <Flame className="w-3 h-3 text-orange-600" /> Lead Priority &amp; Score:
-                    </label>
-                    <select
-                      value={leadScoreFilter}
-                      onChange={(e) => setLeadScoreFilter(e.target.value)}
-                      className="w-full min-h-[38px] bg-white border border-gray-200 text-xs font-semibold py-1.5 px-2.5 rounded-xl text-gray-800"
-                    >
-                      <option value="ALL">All Priority Levels</option>
-                      <option value="HOT">🔥 Hot Deals (High Intent)</option>
-                      <option value="WARM">☀️ Warm Prospects</option>
-                      <option value="COLD">❄️ Cold Leads</option>
-                    </select>
-                  </div>
-
-                  {/* Institution Student Size */}
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
-                      <Building2 className="w-3 h-3 text-emerald-600" /> Madrasa Scale:
-                    </label>
-                    <select
-                      value={institutionSizeFilter}
-                      onChange={(e) => setInstitutionSizeFilter(e.target.value as any)}
-                      className="w-full min-h-[38px] bg-white border border-gray-200 text-xs font-semibold py-1.5 px-2.5 rounded-xl text-gray-800"
-                    >
-                      <option value="ALL">All Madrasa Sizes</option>
-                      <option value="LARGE">🏫 Large (300+ Students)</option>
-                      <option value="MEDIUM">🏫 Medium (100 - 300 Students)</option>
-                      <option value="SMALL">🏫 Small (&lt; 100 Students)</option>
-                    </select>
-                  </div>
-                </div>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
-
-          {/* Quick Presets Segmented Bar (Optimized for mobile touch & desktop) */}
-          <div className="space-y-1.5 pt-1">
-            <div className="flex items-center justify-between gap-2 px-0.5">
-              <span className="text-[11px] sm:text-xs uppercase font-black tracking-wider text-gray-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Presets &amp; Queues
-              </span>
-
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={handleResetAllFilters}
-                  className="min-h-[28px] px-2.5 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 active:scale-95 shrink-0 border border-rose-200"
-                  title="Reset all filters"
-                >
-                  <RotateCcw className="w-3 h-3 text-rose-600" />
-                  <span>Reset Filters</span>
-                </button>
-              )}
-            </div>
-
-            {/* Horizontal Scrolling Chips Track */}
-            <div className="relative -mx-4 px-4 sm:mx-0 sm:px-0">
-              <div
-                ref={presetsScrollRef}
-                className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none py-1 flex-nowrap touch-pan-x scroll-smooth"
-              >
-                {[
-                  { key: "ALL", label: "All Leads", shortLabel: "All", count: smartCounts.all, activeColor: "bg-gray-900 text-white border-gray-900" },
-                  { key: "AI_PRIORITY", label: "🤖 Next to Follow Up", shortLabel: "🤖 Next Up", count: smartCounts.aiPriority, activeColor: "bg-gradient-to-r from-amber-600 to-primary-600 text-white border-transparent" },
-                  { key: "OVERDUE", label: "🚨 Overdue", shortLabel: "🚨 Overdue", count: smartCounts.overdue, activeColor: "bg-rose-600 text-white border-rose-600" },
-                  { key: "TODAY", label: "⏱️ Due Today", shortLabel: "⏱️ Today", count: smartCounts.today, activeColor: "bg-amber-600 text-white border-amber-600" },
-                  { key: "UNTREATED", label: "⚠️ Never Contacted", shortLabel: "⚠️ Untreated", count: smartCounts.untreated, activeColor: "bg-teal-700 text-white border-teal-700" },
-                  { key: "STALE", label: "⏳ Stale (>7d)", shortLabel: "⏳ Stale", count: smartCounts.stale, activeColor: "bg-orange-700 text-white border-orange-700" },
-                  { key: "HOT_WARM", label: "🔥 Warm & Hot", shortLabel: "🔥 Hot/Warm", count: smartCounts.hotWarm, activeColor: "bg-orange-600 text-white border-orange-600" },
-                  { key: "QUALITY", label: "💎 Quality Leads", shortLabel: "💎 Quality", count: smartCounts.quality, activeColor: "bg-violet-600 text-white border-violet-600" },
-                  { key: "ACTIVE_TRIALS", label: "🚀 Active Trials", shortLabel: "🚀 Trials", count: smartCounts.activeTrials, activeColor: "bg-indigo-600 text-white border-indigo-600" },
-                  { key: "NO_FOLLOWUP", label: "⚠️ Needs Date", shortLabel: "⚠️ No Date", count: smartCounts.noFollowup, activeColor: "bg-slate-700 text-white border-slate-700" },
-                ].map((pill) => {
-                  const isSelected = smartPreset === pill.key;
-                  return (
-                    <button
-                      key={pill.key}
-                      ref={isSelected ? activePresetRef : undefined}
-                      type="button"
-                      onClick={() => {
-                        setSmartPreset((prev) => (prev === pill.key ? "ALL" : (pill.key as any)));
-                      }}
-                      className={cn(
-                        "min-h-[36px] sm:min-h-[38px] shrink-0 px-2.5 sm:px-3.5 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 sm:gap-2 active:scale-95 whitespace-nowrap",
-                        isSelected
-                          ? cn(pill.activeColor, "shadow-2xs scale-[1.02]")
-                          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                      )}
-                    >
-                      <span className="hidden sm:inline">{pill.label}</span>
-                      <span className="sm:hidden">{pill.shortLabel}</span>
-                      <span
-                        className={cn(
-                          "px-1.5 sm:px-2 py-0.2 rounded-full text-[10px] sm:text-xs font-black",
-                          isSelected ? "bg-white/20 text-white" : "bg-gray-100 text-gray-700"
-                        )}
-                      >
-                        {pill.count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </div>
 
-          {/* Pipeline Stages Dedicated Filter Bar (Sales Team Primary Pipeline View) */}
-          <div className="pt-2.5 border-t border-gray-100 space-y-1.5">
-            <div className="flex items-center justify-between text-xs px-0.5">
-              <span className="text-[11px] sm:text-xs uppercase font-black tracking-wider text-gray-400 flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-600" /> Pipeline Stages
-              </span>
-              {activeStage !== "ALL" && (
-                <button
-                  type="button"
-                  onClick={() => setActiveStage("ALL")}
-                  className="text-[11px] font-bold text-primary-600 hover:underline"
-                >
-                  Show All Stages
-                </button>
-              )}
-            </div>
-
-            <div className="relative -mx-4 px-4 sm:mx-0 sm:px-0">
-              <div
-                ref={stagesScrollRef}
-                className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 flex-nowrap touch-pan-x scroll-smooth"
-              >
-                <button
-                  ref={activeStage === "ALL" ? activeStageRef : undefined}
-                  type="button"
-                  onClick={() => {
-                    setActiveStage("ALL");
-                  }}
-                  className={cn(
-                    "min-h-[34px] sm:min-h-[36px] shrink-0 px-2.5 sm:px-3 py-1 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 active:scale-95 whitespace-nowrap",
-                    activeStage === "ALL"
-                      ? "bg-primary-600 text-white border-primary-600 shadow-2xs font-black"
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                  )}
-                >
-                  <span>All Stages</span>
-                  <span
-                    className={cn(
-                      "px-1.5 py-0.2 rounded-full text-[10px] sm:text-[11px] font-black",
-                      activeStage === "ALL" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
-                    )}
-                  >
-                    {stageCounts.ALL ?? baseFilteredLeads.length}
-                  </span>
-                </button>
-
-                {LEAD_STATUSES.map((st) => {
-                  const isSelected = activeStage === st;
-                  const count = stageCounts[st] ?? 0;
-                  return (
-                    <button
-                      key={st}
-                      ref={isSelected ? activeStageRef : undefined}
-                      type="button"
-                      onClick={() => {
-                        setActiveStage((prev) => (prev === st ? "ALL" : st));
-                      }}
-                      className={cn(
-                        "min-h-[34px] sm:min-h-[36px] shrink-0 px-2.5 sm:px-3 py-1 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 active:scale-95 whitespace-nowrap",
-                        isSelected
-                          ? "bg-primary-600 text-white border-primary-600 shadow-2xs font-black scale-[1.02]"
-                          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                      )}
-                    >
-                      <span className="hidden sm:inline">{LEAD_STATUS_LABELS[st] ?? st}</span>
-                      <span className="sm:hidden">{SHORT_STATUS_LABELS[st] ?? LEAD_STATUS_LABELS[st] ?? st}</span>
-                      <span
-                        className={cn(
-                          "px-1.5 py-0.2 rounded-full text-[10px] sm:text-[11px] font-black",
-                          isSelected ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
-                        )}
-                      >
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
+          {/* Right Column: Desktop Detail View */}
+          <div
+            className={cn(
+              "hidden lg:flex lg:col-span-7 xl:col-span-8 2xl:col-span-8 relative flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
+              "lg:sticky lg:top-6 lg:max-h-[calc(100vh-2.5rem)]"
+            )}
+          >
+            {selectedLeadId && detailLoading && (
+              <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-gray-400 gap-2">
+                <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+                <span className="text-xs font-bold">Loading lead dossier...</span>
               </div>
-            </div>
+            )}
+
+            {selectedLeadId && !detailLoading && selectedLead && (
+              <div className="overflow-y-auto overscroll-contain flex-1 p-5 sm:p-6 scrollbar-thin">
+                <LeadDetailView
+                  lead={selectedLead}
+                  myIdentifiers={myIdentifiers}
+                  effectiveUserId={effectiveUserId}
+                  assigneeOptions={assigneeOptions}
+                  actionLoading={actionLoading}
+                  canDelete={canDelete}
+                  copiedText={copiedText}
+                  copyToClipboard={copyToClipboard}
+                  onUpdateStage={handleUpdateStage}
+                  onStartEdit={handleStartEditLead}
+                  onSelfClaim={handleSelfClaim}
+                  onOpenQuickAssign={() => {
+                    setQuickAssignUserId(
+                      selectedLead.contributors?.[0]?.userId || effectiveUserId || assigneeOptions[0]?.id || ""
+                    );
+                    setShowQuickAssignModal(true);
+                  }}
+                  onQuickUpdateFollowUp={handleQuickUpdateFollowUp}
+                  onLogActivity={handleLogActivity}
+                  onUpdateActivity={handleUpdateActivity}
+                  onDeleteActivity={handleDeleteActivity}
+                  onProvisionTrial={handleProvisionTrial}
+                  onConvertToMadrasa={handleConvertToMadrasa}
+                  onDeleteLead={handleDeleteLead}
+                />
+              </div>
+            )}
+
+            {!selectedLeadId && !detailLoading && (
+              <div className="flex-1 flex flex-col items-center justify-center p-12 text-center gap-3">
+                <div className="w-14 h-14 rounded-full bg-primary-50 flex items-center justify-center text-primary-600">
+                  <Users className="w-7 h-7" />
+                </div>
+                <h3 className="text-base font-black text-gray-800">Select a Prospect</h3>
+                <p className="text-xs text-gray-500 max-w-xs leading-relaxed">
+                  Click any lead from the list to view institutional parameters, outreach timeline, and manage stage progressions.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ── AI Follow-up Queue ("Whom You Must Follow Up Next") ── */}
-        {!loading && aiFollowUpQueue.length > 0 && (
-          <div className="bg-gradient-to-br from-amber-500/10 via-primary-500/10 to-indigo-500/10 border border-amber-300/80 rounded-3xl p-4 sm:p-5 shadow-xs mb-5 space-y-3.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-amber-200/60">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm sm:text-base font-black text-gray-900 tracking-tight">
-                      {selectedAssignee === "ME"
-                        ? "Your Follow-Up Queue"
-                        : selectedAssignee === "UNASSIGNED"
-                        ? "Unassigned Prospects Queue"
-                        : "Executive Follow-Up Queue"}
-                    </h3>
-                    <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 border border-amber-300">
-                      {selectedAssignee === "ME" ? "⭐ Personalized AI Queue" : "AI Smart Priority"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-600 font-medium mt-0.5">
-                    {selectedAssignee === "ME"
-                      ? "Smart prioritization of your assigned accounts: overdue tasks, untreated prospects, and high-volume deals."
-                      : selectedAssignee === "UNASSIGNED"
-                      ? "Unclaimed prospects requiring immediate ownership and first-touch outreach."
-                      : "System-wide intelligent prioritization favoring your accounts, urgent deadlines, and high-volume deals."}
-                  </p>
-                </div>
+        {/* ── Mobile & Tablet Full-Screen Detail View (Zero scroll conflicts) ── */}
+        <AnimatePresence>
+          {showMobileDetail && selectedLeadId && (
+            <div className="fixed inset-0 z-50 lg:hidden flex flex-col bg-white">
+              {/* Mobile Header Bar */}
+              <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between shrink-0 bg-white">
+                <button
+                  type="button"
+                  onClick={closeLead}
+                  className="min-h-[42px] flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:text-gray-900 px-2 rounded-xl active:bg-gray-100"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Back to List</span>
+                </button>
+
+                {selectedLead && (
+                  <button
+                    type="button"
+                    onClick={() => handleStartEditLead(selectedLead)}
+                    className="min-h-[38px] px-3.5 py-1 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all"
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Edit</span>
+                  </button>
+                )}
               </div>
 
-              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              {/* Mobile Dedicated Single Scrollable Container */}
+              <div
+                className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pb-16"
+                style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
+              >
+                {detailLoading || !selectedLead ? (
+                  <div className="py-20 text-center text-gray-400">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary-600" />
+                  </div>
+                ) : (
+                  <LeadDetailView
+                    lead={selectedLead}
+                    myIdentifiers={myIdentifiers}
+                    effectiveUserId={effectiveUserId}
+                    assigneeOptions={assigneeOptions}
+                    actionLoading={actionLoading}
+                    canDelete={canDelete}
+                    copiedText={copiedText}
+                    copyToClipboard={copyToClipboard}
+                    onUpdateStage={handleUpdateStage}
+                    onStartEdit={handleStartEditLead}
+                    onSelfClaim={handleSelfClaim}
+                    onOpenQuickAssign={() => {
+                      setQuickAssignUserId(
+                        selectedLead.contributors?.[0]?.userId || effectiveUserId || assigneeOptions[0]?.id || ""
+                      );
+                      setShowQuickAssignModal(true);
+                    }}
+                    onQuickUpdateFollowUp={handleQuickUpdateFollowUp}
+                    onLogActivity={handleLogActivity}
+                    onUpdateActivity={handleUpdateActivity}
+                    onDeleteActivity={handleDeleteActivity}
+                    onProvisionTrial={handleProvisionTrial}
+                    onConvertToMadrasa={handleConvertToMadrasa}
+                    onDeleteLead={handleDeleteLead}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Floating Bulk Action Toolbar ── */}
+        <AnimatePresence>
+          {selectedLeadIds.size > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="fixed bottom-20 left-3 right-3 lg:bottom-8 lg:left-auto lg:right-8 z-40 bg-gray-900/95 backdrop-blur-md text-white p-3 rounded-2xl shadow-2xl border border-gray-700 flex flex-wrap items-center justify-between gap-2"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-extrabold bg-primary-600 text-white px-2 py-0.5 rounded-full">
+                  {selectedLeadIds.size}
+                </span>
+                <span className="text-xs font-semibold text-gray-200 hidden sm:inline">selected</span>
+                {selectedLeadIds.size < filteredLeads.length && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLeadIds(new Set(filteredLeads.map((l) => l.id)))}
+                    className="text-[11px] font-bold text-primary-400 hover:text-primary-300 underline ml-1"
+                  >
+                    Select All ({filteredLeads.length})
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 ml-auto">
                 <button
                   type="button"
                   onClick={() => {
-                    setSmartPreset("AI_PRIORITY");
-                    setSortBy("SMART_PRIORITY");
+                    setBulkSelectedUserId(effectiveUserId || assigneeOptions[0]?.id || "");
+                    setBulkModalType("ASSIGN");
                   }}
-                  className="text-xs font-bold text-primary-800 hover:text-primary-900 bg-white/80 hover:bg-white border border-primary-200 px-3 py-1.5 rounded-xl transition-all shadow-2xs active:scale-95"
+                  className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
                 >
-                  View All Priority Queue ({smartCounts.aiPriority})
+                  <Users className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Assign</span>
                 </button>
+
                 <button
                   type="button"
-                  onClick={() => setIsAiQueueCollapsed((p) => !p)}
-                  className="p-1.5 text-gray-500 hover:text-gray-800 rounded-lg hover:bg-white/60 transition-all"
-                  title={isAiQueueCollapsed ? "Expand Queue" : "Collapse Queue"}
+                  onClick={() => {
+                    setBulkSelectedStatus("FOLLOW_UP");
+                    setBulkRemarks("");
+                    setBulkModalType("STATUS");
+                  }}
+                  className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
                 >
-                  {isAiQueueCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Stage</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkFollowUpDate(formatLocalDateForInput(new Date()));
+                    setBulkRemarks("");
+                    setBulkModalType("FOLLOW_UP");
+                  }}
+                  className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                >
+                  <CalendarClock className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Follow-up</span>
+                </button>
+
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => setBulkModalType("DELETE")}
+                    className="min-h-[32px] px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                  >
+                    <Trash className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedLeadIds(new Set())}
+                  className="min-h-[32px] px-2 py-1 bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-all ml-1"
+                >
+                  ✕
                 </button>
               </div>
-            </div>
-
-            {!isAiQueueCollapsed && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                {aiFollowUpQueue.map(({ lead: l, priority }) => {
-                  const primaryC = l.contacts?.find((c) => c.isPrimary) || l.contacts?.[0];
-                  const cleanPhone = primaryC?.phone?.replace(/[^0-9]/g, "") || "";
-                  const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-
-                  return (
-                    <div
-                      key={l.id}
-                      onClick={() => selectLead(l.id)}
-                      className={cn(
-                        "bg-white/95 backdrop-blur-xs border rounded-2xl p-3.5 space-y-2.5 transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.99] flex flex-col justify-between",
-                        selectedLeadId === l.id
-                          ? "border-primary-500 ring-2 ring-primary-500/20"
-                          : "border-gray-200/90 hover:border-amber-400"
-                      )}
-                    >
-                      <div className="space-y-1.5">
-                        <div className="flex items-start justify-between gap-1.5">
-                          <span
-                            className={cn(
-                              "text-[10px] font-extrabold px-2 py-0.5 rounded-md border truncate max-w-[190px]",
-                              priority.badgeColor
-                            )}
-                          >
-                            {priority.primaryReason}
-                          </span>
-                          {renderScoreBadge(l.score)}
-                        </div>
-
-                        <div>
-                          <h4 className="text-sm font-black text-gray-900 truncate leading-snug">
-                            {l.name}
-                          </h4>
-                          <p className="text-[11px] text-gray-500 truncate">
-                            📍 {l.place || "Kerala"}{l.district ? `, ${l.district}` : ""} • {l.studentCount || 0} students
-                          </p>
-                        </div>
-
-                        {primaryC && (
-                          <p className="text-xs text-gray-700 font-semibold truncate pt-1 border-t border-gray-100">
-                            👤 {primaryC.name || "Contact"}{primaryC.phone ? ` • ${primaryC.phone}` : ""}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-1.5">
-                        {primaryC?.phone ? (
-                          <div className="flex items-center gap-1">
-                            <a
-                              href={`tel:${primaryC.phone}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold border border-blue-200 transition-all active:scale-95"
-                              title="Call"
-                            >
-                              <Phone className="w-3.5 h-3.5" />
-                            </a>
-                            <a
-                              href={`https://wa.me/${waPhone}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold border border-emerald-200 transition-all active:scale-95"
-                              title="WhatsApp"
-                            >
-                              <MessageSquare className="w-3.5 h-3.5" />
-                            </a>
-                          </div>
-                        ) : (
-                          <span className="text-[10px] text-gray-400 italic">No phone</span>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            selectLead(l.id);
-                            setActiveLeadTab("activity");
-                            setActiveSection("followup");
-                          }}
-                          className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-all shadow-2xs active:scale-95 flex items-center gap-1 ml-auto"
-                        >
-                          <Clock className="w-3 h-3" />
-                          <span>Follow Up</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Loading Indicator */}
-        {loading && (
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-            <SkeletonList count={5} className="lg:col-span-5 xl:col-span-4" />
-            <DetailSkeleton className="hidden lg:col-span-7 xl:col-span-8 lg:block" />
-          </div>
-        )}
-
-        {/* ── Split Workspace (List + Detail) ── */}
-        {!loading && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            {/* Left Column: Lead List Cards */}
-            <div
-              className={cn(
-                "w-full lg:col-span-5 xl:col-span-4 2xl:col-span-4 relative flex flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
-                "lg:sticky lg:top-6 lg:max-h-[calc(100vh-2.5rem)]"
-              )}
-            >
-              <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <input
-                    type="checkbox"
-                    checked={paginatedLeads.length > 0 && paginatedLeads.every((l) => selectedLeadIds.has(l.id))}
-                    onChange={(e) => {
-                      const next = new Set(selectedLeadIds);
-                      if (e.target.checked) {
-                        paginatedLeads.forEach((l) => next.add(l.id));
-                      } else {
-                        paginatedLeads.forEach((l) => next.delete(l.id));
-                      }
-                      setSelectedLeadIds(next);
-                    }}
-                    className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 cursor-pointer"
-                    title="Select all on this page"
-                  />
-                  <span className="text-xs font-black text-gray-700 uppercase tracking-wider truncate">
-                    {smartPreset !== "ALL"
-                      ? smartPreset.replace(/_/g, " ")
-                      : activeStage === "ALL"
-                      ? "All Leads"
-                      : activeStage.replace(/_/g, " ")}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {selectedLeadIds.size > 0 && (
-                    <span className="text-xs font-black bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
-                      {selectedLeadIds.size} selected
-                    </span>
-                  )}
-                  <span className="text-xs font-bold bg-primary-100 text-primary-800 px-2.5 py-0.5 rounded-full border border-primary-200">
-                    {filteredLeads.length} records
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3.5 space-y-3 scrollbar-thin">
-                {filteredLeads.length === 0 && (
-                  selectedAssignee === "ME" && assigneeCounts.me === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-14 gap-3 text-center px-4 bg-amber-50/40 rounded-3xl border border-amber-200/60 my-4">
-                      <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shadow-2xs">
-                        <Inbox className="w-6 h-6" />
-                      </div>
-                      <div className="space-y-1">
-                        <h4 className="text-sm sm:text-base font-black text-gray-900">
-                          No leads assigned to you yet
-                        </h4>
-                        <p className="text-xs text-gray-600 max-w-sm mx-auto leading-relaxed">
-                          You are viewing leads assigned to <strong>{user?.name || "your account"}</strong>. You can browse all {assigneeCounts.all} leads, claim unassigned leads, or create a new prospect.
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedAssignee("ALL")}
-                          className="min-h-[38px] px-4 py-1.5 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-bold transition-all shadow-xs active:scale-95 flex items-center gap-1.5"
-                        >
-                          <span>🌐 View All Leads</span>
-                          <span className="px-1.5 py-0.5 rounded-full bg-gray-800 text-white text-[10px]">
-                            {assigneeCounts.all}
-                          </span>
-                        </button>
-                        {assigneeCounts.unassigned > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setSelectedAssignee("UNASSIGNED")}
-                            className="min-h-[38px] px-4 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-xs active:scale-95 flex items-center gap-1.5"
-                          >
-                            <span>⚠️ View Unassigned</span>
-                            <span className="px-1.5 py-0.5 rounded-full bg-amber-700 text-white text-[10px]">
-                              {assigneeCounts.unassigned}
-                            </span>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={handleOpenAddLead}
-                          className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-gray-800 text-xs font-bold transition-all shadow-2xs active:scale-95"
-                        >
-                          + Add Prospect
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-20 gap-2 text-center px-4">
-                      <p className="text-sm text-gray-500 font-medium">No leads match current filters.</p>
-                      <button
-                        type="button"
-                        onClick={handleResetAllFilters}
-                        className="text-xs font-bold text-primary-700 hover:underline mt-1"
-                      >
-                        Reset filters
-                      </button>
-                    </div>
-                  )
-                )}
-
-                {paginatedLeads.map((l) => {
-                  const isSelected = selectedLeadId === l.id;
-                  const isChecked = selectedLeadIds.has(l.id);
-                  const primaryC = l.contacts?.find((c) => c.isPrimary) || l.contacts?.[0];
-                  const cleanPhone = primaryC?.phone?.replace(/[^0-9]/g, "") || "";
-                  const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-                  const fuStatus = getFollowUpStatus(l.nextFollowUpDate);
-                  const priority = calculateLeadSmartPriority(l, myIdentifiers, effectiveUserId);
-
-                  return (
-                    <div
-                      key={l.id}
-                      onClick={() => selectLead(l.id)}
-                      className={cn(
-                        "p-4 rounded-2xl border cursor-pointer transition-all space-y-3 select-none relative",
-                        isSelected
-                          ? "bg-primary-50/50 border-primary-500 shadow-sm ring-1 ring-primary-500/30"
-                          : isChecked
-                          ? "bg-amber-50/40 border-amber-300 hover:shadow-xs"
-                          : "bg-white border-gray-200/90 hover:border-primary-300 hover:shadow-xs"
-                      )}
-                    >
-                      {/* Top Row: Checkbox, Name, Score & Location */}
-                      <div className="flex items-start gap-2.5">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => {
-                            const next = new Set(selectedLeadIds);
-                            if (e.target.checked) next.add(l.id);
-                            else next.delete(l.id);
-                            setSelectedLeadIds(next);
-                          }}
-                          className="mt-1 w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 cursor-pointer shrink-0"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex justify-between items-start gap-2">
-                            <h3 className="text-base font-bold text-gray-900 truncate leading-snug">
-                              {l.name}
-                            </h3>
-                            {renderScoreBadge(l.score)}
-                          </div>
-                          <p className="text-xs text-gray-500 mt-0.5 truncate">
-                            📍 {l.place || "Place"}
-                            {l.district ? `, ${l.district}` : ""} • {l.studentCount || 0} students
-                            {l.createdBy ? ` • by ${l.createdBy}` : ""}
-                          </p>
-                          <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
-                            <span
-                              className={cn(
-                                "text-[10px] font-extrabold px-2 py-0.5 rounded-md border inline-flex items-center gap-1",
-                                priority.badgeColor
-                              )}
-                            >
-                              {priority.primaryReason}
-                            </span>
-                            {priority.isUntreated && (
-                              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
-                                ⚠️ Never Contacted
-                              </span>
-                            )}
-                            {priority.daysSinceLastContact > 0 && (
-                              <span className="text-[10px] font-semibold text-gray-500">
-                                Last touch: {priority.daysSinceLastContact}d ago
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Middle: Contact Person & Quick 1-Tap Call/WA Buttons */}
-                      {primaryC && (
-                        <div className="pt-2 border-t border-gray-100 space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="text-xs font-semibold text-gray-800 truncate">
-                                {primaryC.name || "Contact person"}
-                                {primaryC.role ? ` (${primaryC.role})` : ""}
-                              </p>
-                              {primaryC.phone && (
-                                <p className="text-xs font-mono font-bold text-gray-600 mt-0.5">
-                                  {primaryC.phone}
-                                </p>
-                              )}
-                            </div>
-
-                            {primaryC.phone && (
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <a
-                                  href={`tel:${primaryC.phone}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="min-h-[36px] px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border border-blue-200 active:scale-95"
-                                  title={`Call: ${primaryC.phone}`}
-                                >
-                                  <Phone className="w-3.5 h-3.5" />
-                                  <span>Call</span>
-                                </a>
-                                <a
-                                  href={`https://wa.me/${waPhone}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="min-h-[36px] px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border border-emerald-200 active:scale-95"
-                                  title="WhatsApp chat"
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5" />
-                                  <span>WA</span>
-                                </a>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Secondary / Alternative Contact Number if available */}
-                          {primaryC.secondaryPhone && (() => {
-                            const cleanAlt = primaryC.secondaryPhone.replace(/[^0-9]/g, "");
-                            const waAlt = cleanAlt.length === 10 ? `91${cleanAlt}` : cleanAlt;
-                            return (
-                              <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-dashed border-gray-100 text-xs">
-                                <span className="font-mono text-gray-500 truncate">
-                                  Alt: <strong className="text-gray-800">{primaryC.secondaryPhone}</strong>
-                                </span>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <a
-                                    href={`tel:${primaryC.secondaryPhone}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="min-h-[32px] px-2 py-1 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-xs font-semibold border border-gray-200 flex items-center gap-1 active:scale-95"
-                                    title={`Call Alt: ${primaryC.secondaryPhone}`}
-                                  >
-                                    <Phone className="w-3 h-3 text-blue-600" />
-                                    <span>Call</span>
-                                  </a>
-                                  <a
-                                    href={`https://wa.me/${waAlt}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="min-h-[32px] px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-semibold border border-emerald-200 flex items-center gap-1 active:scale-95"
-                                    title={`WhatsApp Alt: ${primaryC.secondaryPhone}`}
-                                  >
-                                    <MessageSquare className="w-3 h-3 text-emerald-600" />
-                                    <span>WA</span>
-                                  </a>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      )}
-
-                      {/* Latest Activity Remark / Discussion Note */}
-                      {l.timeline && l.timeline.length > 0 && l.timeline[0]?.notes && (
-                        <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 flex items-start gap-2 text-xs">
-                          <MessageSquare className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-1 text-[10px] text-amber-900/80 font-bold mb-0.5">
-                              <span className="truncate">
-                                Latest Note {l.timeline[0].user?.name ? `(${l.timeline[0].user.name})` : ""}
-                              </span>
-                              <span className="shrink-0 text-amber-800/70">
-                                {new Date(l.timeline[0].createdAt).toLocaleDateString("en-IN", {
-                                  day: "numeric",
-                                  month: "short",
-                                })}
-                              </span>
-                            </div>
-                            <p className="text-gray-800 font-medium line-clamp-2 leading-relaxed">
-                              {l.timeline[0].notes}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Footer Row: Status, Assignee, Next Follow-up & Quick Schedule Trigger */}
-                      <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-1.5 flex-wrap">
-                        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                          {/* Interactive 1-Tap Status Switcher */}
-                          <div
-                            className="relative shrink-0 inline-flex items-center"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCardFollowUpPickerId(null);
-                                setCardStatusPickerId(l.id);
-                              }}
-                              className={cn(
-                                "min-h-[30px] px-2.5 py-1 rounded-xl border text-[11px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1 active:scale-95",
-                                STATUS_COLORS[l.status] || "bg-gray-100 text-gray-700 border-gray-200"
-                              )}
-                              title="Change pipeline stage"
-                            >
-                              <span className="truncate max-w-[110px]">{LEAD_STATUS_LABELS[l.status] ?? l.status}</span>
-                              <ChevronDown className="w-3 h-3 opacity-60 text-current shrink-0" />
-                            </button>
-                          </div>
-
-                          {/* Assignee Badge & 1-Tap Claim */}
-                          {(() => {
-                            const isMine = isLeadAssignedToUser(l, myIdentifiers, effectiveUserId);
-                            const isUnassignedLead = isLeadUnassigned(l);
-                            const assigneeName = l.contributors?.[0]?.user?.name || l.contributors?.[0]?.userId;
-
-                            if (isMine) {
-                              return (
-                                <span
-                                  className="min-h-[30px] px-2.5 py-0.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-black flex items-center gap-1 shrink-0 shadow-2xs"
-                                  title="Assigned to You"
-                                >
-                                  <span>⭐</span>
-                                  <span>You</span>
-                                </span>
-                              );
-                            }
-
-                            if (isUnassignedLead) {
-                              return (
-                                <button
-                                  type="button"
-                                  disabled={actionLoading}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSelfClaimLead(l.id);
-                                  }}
-                                  className="min-h-[30px] px-2.5 py-0.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-bold flex items-center gap-1 shrink-0 shadow-2xs active:scale-95 transition-all"
-                                  title="Click to claim this lead to your account"
-                                >
-                                  <span>⚠️ Claim Lead</span>
-                                </button>
-                              );
-                            }
-
-                            return (
-                              <span
-                                className="min-h-[30px] px-2 py-0.5 rounded-xl bg-gray-100 text-gray-700 border border-gray-200/80 text-[11px] font-semibold flex items-center gap-1 max-w-[120px] shrink-0"
-                                title={`Assigned to: ${l.contributors?.map((c) => c.user?.name).filter(Boolean).join(", ")}`}
-                              >
-                                <Users className="w-3 h-3 text-gray-500 shrink-0" />
-                                <span className="truncate">{assigneeName || "Assigned"}</span>
-                              </span>
-                            );
-                          })()}
-                        </div>
-
-                        {/* Follow-up Status Badge & Schedule Trigger */}
-                        <div
-                          className="flex items-center gap-1 shrink-0 ml-auto"
-                          data-popover-container="followup"
-                          onClick={(e) => e.stopPropagation()}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onTouchStart={(e) => e.stopPropagation()}
-                        >
-                          {l.nextFollowUpDate ? (
-                            <span
-                              className={cn(
-                                "text-xs px-2.5 py-1 rounded-lg border flex items-center gap-1 shrink-0 font-bold",
-                                fuStatus.badgeClass
-                              )}
-                            >
-                              {fuStatus.urgency === "overdue" && (
-                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                              )}
-                              {fuStatus.urgency === "today" && (
-                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
-                              )}
-                              {fuStatus.label}
-                            </span>
-                          ) : (
-                            <span className="text-[11px] text-gray-400 italic">No date</span>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCardStatusPickerId(null);
-                              if (cardFollowUpPickerId === l.id) {
-                                setCardFollowUpPickerId(null);
-                              } else {
-                                setCardFollowUpPickerId(l.id);
-                                setCardCustomDate(l.nextFollowUpDate ? l.nextFollowUpDate.split("T")[0] : "");
-                                setCardRemarks("");
-                              }
-                            }}
-                            className="min-h-[30px] p-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1 transition-all active:scale-95"
-                            title="Schedule next follow-up directly"
-                          >
-                            <CalendarClock className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>{l.nextFollowUpDate ? "Change" : "+ Date"}</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Card-Level Quick Inline Date Scheduler Popover */}
-                      <AnimatePresence>
-                        {cardFollowUpPickerId === l.id && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            data-popover-container="followup"
-                            onClick={(e) => e.stopPropagation()}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onTouchStart={(e) => e.stopPropagation()}
-                            className="overflow-hidden"
-                          >
-                            <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-2.5 mt-1 shadow-xs">
-                              <div className="flex items-center justify-between text-xs font-bold text-emerald-900">
-                                <span className="flex items-center gap-1">
-                                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                                  Schedule Follow-up:
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => setCardFollowUpPickerId(null)}
-                                  className="text-gray-400 hover:text-gray-600 p-0.5"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-
-                              {/* Latest Activity Remark Context */}
-                              {l.timeline && l.timeline.length > 0 && l.timeline[0]?.notes && (
-                                <div className="p-2 bg-white/95 border border-emerald-200/90 rounded-lg text-xs space-y-0.5 shadow-2xs">
-                                  <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
-                                    <span>Latest Note {l.timeline[0].user?.name ? `(${l.timeline[0].user.name})` : ""}:</span>
-                                    <span>{new Date(l.timeline[0].createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
-                                  </div>
-                                  <p className="text-gray-800 italic line-clamp-2 leading-relaxed">{l.timeline[0].notes}</p>
-                                </div>
-                              )}
-
-                              <div className="flex flex-wrap gap-1.5">
-                                {[
-                                  { label: "Today", days: 0 },
-                                  { label: "Tomorrow", days: 1 },
-                                  { label: "In 3 Days", days: 3 },
-                                  { label: "Next Week", days: 7 },
-                                ].map((p) => {
-                                  const target = new Date();
-                                  target.setDate(target.getDate() + p.days);
-                                  const isoDate = target.toISOString().split("T")[0];
-                                  const isSelected = cardCustomDate === isoDate;
-                                  return (
-                                    <button
-                                      key={p.label}
-                                      type="button"
-                                      disabled={followUpSaving}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setCardCustomDate(isoDate);
-                                      }}
-                                      className={cn(
-                                        "px-2.5 py-1 text-xs font-bold rounded-lg border transition-all shadow-2xs active:scale-95 disabled:opacity-50",
-                                        isSelected
-                                          ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                                          : "bg-white hover:bg-emerald-50 text-gray-700 border-gray-200"
-                                      )}
-                                    >
-                                      {p.label}
-                                    </button>
-                                  );
-                                })}
-
-                                {l.nextFollowUpDate && (
-                                  <button
-                                    type="button"
-                                    disabled={followUpSaving}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      await handleQuickUpdateFollowUp(null, l.id);
-                                    }}
-                                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 ml-auto active:scale-95 disabled:opacity-50"
-                                  >
-                                    Clear
-                                  </button>
-                                )}
-                              </div>
-
-                              {/* Remarks / Discussion Note for this Follow-up */}
-                              <div>
-                                <input
-                                  type="text"
-                                  placeholder="Add remarks or notes for this follow-up..."
-                                  value={cardRemarks}
-                                  onChange={(e) => setCardRemarks(e.target.value)}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" && (cardCustomDate || l.nextFollowUpDate)) {
-                                      e.preventDefault();
-                                      handleQuickUpdateFollowUp(cardCustomDate || l.nextFollowUpDate || null, l.id, cardRemarks);
-                                    }
-                                  }}
-                                  className="w-full min-h-[34px] bg-white border border-gray-200 text-xs py-1.5 px-2.5 rounded-lg focus:outline-none focus:border-emerald-600 font-medium text-gray-800 placeholder:text-gray-400"
-                                />
-                              </div>
-
-                              {/* Custom Calendar Date Input & Save Button */}
-                              <div className="flex items-center gap-1.5 pt-1 border-t border-emerald-100">
-                                <input
-                                  type="date"
-                                  value={cardCustomDate}
-                                  onChange={(e) => setCardCustomDate(e.target.value)}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="min-h-[34px] flex-1 bg-white border border-gray-200 text-xs py-1 px-2.5 rounded-lg focus:outline-none focus:border-emerald-600 font-semibold text-gray-800"
-                                />
-                                <button
-                                  type="button"
-                                  disabled={followUpSaving || (!cardCustomDate && !cardRemarks.trim())}
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    await handleQuickUpdateFollowUp(cardCustomDate || l.nextFollowUpDate || null, l.id, cardRemarks);
-                                  }}
-                                  className="min-h-[34px] px-3.5 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-xs transition-all flex items-center gap-1 shrink-0 active:scale-95"
-                                >
-                                  {followUpSaving ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  ) : (
-                                    <Check className="w-3.5 h-3.5" />
-                                  )}
-                                  Save Follow-up
-                                </button>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Pagination Controls */}
-              {filteredLeads.length > 0 && (
-                <div className="p-3 border-t border-gray-100 bg-gray-50/90 flex flex-wrap items-center justify-between gap-2 shrink-0">
-                  <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
-                    <span>Rows:</span>
-                    <select
-                      value={pageSize}
-                      onChange={(e) => {
-                        setPageSize(Number(e.target.value));
-                        setCurrentPage(1);
-                      }}
-                      className="bg-white border border-gray-200 text-xs font-bold text-gray-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                    >
-                      <option value={10}>10</option>
-                      <option value={20}>20</option>
-                      <option value={50}>50</option>
-                      <option value={100}>100</option>
-                    </select>
-                    <span className="ml-1 font-semibold text-gray-600">
-                      {`${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, filteredLeads.length)} of ${filteredLeads.length}`}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled={currentPage <= 1}
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none text-gray-700 transition-all active:scale-95"
-                      title="Previous page"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <span className="text-xs font-bold text-gray-700 px-2">
-                      {currentPage} / {totalPages}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={currentPage >= totalPages}
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none text-gray-700 transition-all active:scale-95"
-                      title="Next page"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Floating / Docked Bulk Actions Bar */}
-              <AnimatePresence>
-                {selectedLeadIds.size > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    className="fixed bottom-20 left-3 right-3 lg:absolute lg:bottom-14 lg:left-3 lg:right-3 z-40 bg-gray-900/95 backdrop-blur-md text-white p-2.5 sm:p-3 rounded-2xl shadow-2xl border border-gray-700 flex flex-wrap items-center justify-between gap-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-extrabold bg-primary-600 text-white px-2 py-0.5 rounded-full">
-                        {selectedLeadIds.size}
-                      </span>
-                      <span className="text-xs font-semibold text-gray-200 hidden sm:inline">selected</span>
-                      {selectedLeadIds.size < filteredLeads.length && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedLeadIds(new Set(filteredLeads.map((l) => l.id)));
-                          }}
-                          className="text-[11px] font-bold text-primary-400 hover:text-primary-300 underline underline-offset-2 ml-1"
-                        >
-                          All ({filteredLeads.length})
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 ml-auto">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setBulkSelectedUserId(effectiveUserId || assigneeOptions[0]?.id || "");
-                          setBulkModalType("ASSIGN");
-                        }}
-                        className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
-                        title="Assign to sales representative"
-                      >
-                        <Users className="w-3.5 h-3.5 text-blue-400" />
-                        <span>Assign</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setBulkSelectedStatus("FOLLOW_UP");
-                          setBulkRemarks("");
-                          setBulkModalType("STATUS");
-                        }}
-                        className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
-                        title="Move to new pipeline stage"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Stage</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setBulkFollowUpDate(formatLocalDateForInput(new Date()));
-                          setBulkRemarks("");
-                          setBulkModalType("FOLLOW_UP");
-                        }}
-                        className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
-                        title="Schedule follow-up date"
-                      >
-                        <CalendarClock className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Follow-up</span>
-                      </button>
-
-                      {canDelete && (
-                        <button
-                          type="button"
-                          onClick={() => setBulkModalType("DELETE")}
-                          className="min-h-[32px] px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
-                          title="Delete selected leads"
-                        >
-                          <Trash className="w-3.5 h-3.5 text-rose-400" />
-                          <span className="hidden sm:inline">Delete</span>
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => setSelectedLeadIds(new Set())}
-                        className="p-1 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg transition-all ml-1"
-                        title="Clear selection"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Right Column: Lead Detail (Desktop Split View) */}
-            <div
-              className={cn(
-                "hidden lg:flex lg:col-span-7 xl:col-span-8 2xl:col-span-8 relative flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
-                "lg:sticky lg:top-6 lg:max-h-[calc(100vh-2.5rem)]"
-              )}
-            >
-              {selectedLeadId && detailLoading && (
-                <DetailSkeleton className="flex-1" />
-              )}
-
-              {selectedLeadId && !detailLoading && selectedLead && (
-                <div className="overflow-y-auto overscroll-contain flex-1 p-5 sm:p-6 scrollbar-thin">
-                  {renderDetailContent()}
-                </div>
-              )}
-
-              {!selectedLeadId && !detailLoading && (
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-primary-50 flex items-center justify-center text-primary-600">
-                    <Users className="w-7 h-7" />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="text-base font-black text-gray-800">Select a Lead</h3>
-                    <p className="text-xs text-gray-500 max-w-xs leading-relaxed">
-                      Click any lead from the list to view institutional parameters, timeline interactions, and manage conversions.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3 w-full max-w-sm pt-4 border-t border-gray-100">
-                    <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100 text-center">
-                      <p className="text-[10px] text-gray-400 uppercase font-bold">Active</p>
-                      <p className="text-xl font-black text-gray-800">{leads.filter(l => !["WON","LOST"].includes(l.status)).length}</p>
-                    </div>
-                    <div className="p-3 bg-primary-50 rounded-2xl border border-primary-100 text-center">
-                      <p className="text-[10px] text-primary-700 uppercase font-bold">Won</p>
-                      <p className="text-xl font-black text-primary-800">{leads.filter(l => l.status === "WON").length}</p>
-                    </div>
-                    <div className="p-3 bg-rose-50 rounded-2xl border border-rose-100 text-center">
-                      <p className="text-[10px] text-rose-700 uppercase font-bold">Lost</p>
-                      <p className="text-xl font-black text-rose-700">{leads.filter(l => l.status === "LOST").length}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── Mobile & Tablet Full-Screen Detail Sheet (Clean & Non-overlapping) ── */}
-        <AnimatePresence>
-          {showMobileDetail && selectedLeadId && (
-            <div className="fixed inset-0 z-50 lg:hidden flex flex-col bg-slate-900/60 backdrop-blur-xs">
-              <motion.div
-                initial={{ y: "100%" }}
-                animate={{ y: 0 }}
-                exit={{ y: "100%" }}
-                transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                className="bg-white flex-1 mt-6 sm:mt-10 rounded-t-3xl overflow-hidden flex flex-col shadow-2xl relative"
-              >
-                {/* Mobile Header Bar */}
-                <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-gray-200/90 flex items-center justify-between shrink-0 bg-white">
-                  <button
-                    type="button"
-                    onClick={closeLead}
-                    className="min-h-[44px] flex items-center gap-1.5 text-xs sm:text-sm font-bold text-gray-700 hover:text-gray-900 px-2 rounded-xl"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span>Back to Leads</span>
-                  </button>
-
-                  {selectedLead && (
-                    <button
-                      type="button"
-                      onClick={() => handleStartEditLead(selectedLead)}
-                      className="min-h-[40px] px-3.5 py-1 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all"
-                    >
-                      <Pencil className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Edit</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Mobile Body Content */}
-                <div className="flex-1 overflow-y-auto p-3 sm:p-5 pb-4 overscroll-contain scrollbar-thin">
-                  {detailLoading ? (
-                    <DetailSkeleton />
-                  ) : (
-                    renderDetailContent()
-                  )}
-                </div>
-
-                {/* Mobile Bottom Action Bar (Docked naturally inside sheet, above BottomNav) */}
-                {selectedLead && (
-                  <div className="shrink-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 px-4 flex items-center gap-2 shadow-lg z-30 pb-safe">
-                    {(() => {
-                      const pContact = selectedLead.contacts?.find((c) => c.isPrimary) || selectedLead.contacts?.[0];
-                      const clPhone = pContact?.phone?.replace(/[^0-9]/g, "") || "";
-                      const wPhone = clPhone.length === 10 ? `91${clPhone}` : clPhone;
-
-                      return (
-                        <>
-                          {pContact?.phone && (
-                            <>
-                              <a
-                                href={`tel:${pContact.phone}`}
-                                className="min-h-[44px] flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
-                              >
-                                <Phone className="w-4 h-4" />
-                                <span>Call Now</span>
-                              </a>
-                              <a
-                                href={`https://wa.me/${wPhone}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="min-h-[44px] flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
-                              >
-                                <MessageSquare className="w-4 h-4" />
-                                <span>WhatsApp</span>
-                              </a>
-                            </>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveLeadTab("activity");
-                              setActiveSection("followup");
-                            }}
-                            className="min-h-[44px] px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs rounded-xl flex items-center justify-center gap-1"
-                          >
-                            <Clock className="w-4 h-4" />
-                            <span>Log</span>
-                          </button>
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-              </motion.div>
-            </div>
+            </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ── Add Lead Drawer / Sheet ── */}
-        <AnimatePresence>
-          {showAddDrawer && (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-end p-0">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.5 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setShowAddDrawer(false)}
-                className="fixed inset-0 bg-black backdrop-blur-xs"
-              />
-              <motion.div
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ type: "spring", damping: 28, stiffness: 260 }}
-                className="relative bg-white w-full max-w-lg h-full max-h-screen overflow-y-auto p-4 sm:p-7 space-y-5 sm:space-y-6 shadow-2xl z-10 flex flex-col"
-              >
-                <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-                  <div>
-                    <h3 className="text-xl font-black text-gray-900">Add New Lead</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Register a new madrasa prospect into the CRM pipeline</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddDrawer(false)}
-                    className="p-2 text-gray-400 hover:bg-gray-100 rounded-xl"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
+        {/* ── Drawers and Modals ── */}
+        <LeadFormDrawer
+          isOpen={showCreateDrawer}
+          mode="create"
+          onClose={() => setShowCreateDrawer(false)}
+          formData={formData}
+          setFormData={setFormData}
+          onSubmit={(e) => handleSaveLead(e, false)}
+          isSaving={formSaving}
+          districts={districts}
+          assigneeOptions={assigneeOptions}
+          effectiveUserId={effectiveUserId}
+        />
 
-                <form onSubmit={handleCreateLead} className="space-y-4 flex-1">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Madrasa Name *
-                    </label>
-                    <input
-                      required
-                      type="text"
-                      value={newLeadForm.name}
-                      onChange={(e) => setNewLeadForm((p) => ({ ...p, name: e.target.value }))}
-                      placeholder="e.g. Darul Uloom Kozhikode"
-                      className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
-                    />
-                  </div>
+        <LeadFormDrawer
+          isOpen={showEditDrawer}
+          mode="edit"
+          onClose={() => setShowEditDrawer(false)}
+          formData={formData}
+          setFormData={setFormData}
+          onSubmit={(e) => handleSaveLead(e, true)}
+          isSaving={formSaving}
+          districts={districts}
+          assigneeOptions={assigneeOptions}
+          effectiveUserId={effectiveUserId}
+        />
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Initial Stage
-                      </label>
-                      <select
-                        value={newLeadForm.status}
-                        onChange={(e) => setNewLeadForm((p) => ({ ...p, status: e.target.value }))}
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
-                      >
-                        {LEAD_STATUSES.map((s) => (
-                          <option key={s} value={s}>
-                            {LEAD_STATUS_LABELS[s] ?? s.replace(/_/g, " ")}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+        <LeadQuickAssignModal
+          isOpen={showQuickAssignModal}
+          onClose={() => setShowQuickAssignModal(false)}
+          lead={selectedLead}
+          assigneeOptions={assigneeOptions}
+          selectedUserId={quickAssignUserId}
+          onSelectUserId={setQuickAssignUserId}
+          onConfirm={handleQuickAssign}
+          isLoading={quickAssignLoading}
+          effectiveUserId={effectiveUserId}
+        />
 
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Syllabus Type
-                      </label>
-                      <select
-                        value={newLeadForm.type}
-                        onChange={(e) => setNewLeadForm((p) => ({ ...p, type: e.target.value }))}
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
-                      >
-                        {["Samastha", "AP", "Fadhila", "Other"].map((t) => (
-                          <option key={t} value={t}>
-                            {t}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+        <LeadBulkModal
+          isOpen={Boolean(bulkModalType)}
+          bulkModalType={bulkModalType}
+          onClose={() => setBulkModalType(null)}
+          selectedLeadCount={selectedLeadIds.size}
+          assigneeOptions={assigneeOptions}
+          effectiveUserId={effectiveUserId}
+          bulkSelectedUserId={bulkSelectedUserId}
+          onSelectUserId={setBulkSelectedUserId}
+          bulkSelectedStatus={bulkSelectedStatus}
+          onSelectStatus={setBulkSelectedStatus}
+          bulkFollowUpDate={bulkFollowUpDate}
+          onSelectFollowUpDate={setBulkFollowUpDate}
+          bulkRemarks={bulkRemarks}
+          onChangeRemarks={setBulkRemarks}
+          onConfirm={handleExecuteBulkAction}
+          isLoading={bulkActionLoading}
+        />
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        District *
-                      </label>
-                      <select
-                        required
-                        value={newLeadForm.districtId}
-                        onChange={(e) => {
-                          const d = districts.find((d) => d.id === e.target.value);
-                          setNewLeadForm((p) => ({
-                            ...p,
-                            districtId: e.target.value,
-                            district: d?.name ?? "",
-                          }));
-                        }}
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
-                      >
-                        <option value="">Select District *</option>
-                        {districts.map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Place / Town
-                      </label>
-                      <input
-                        type="text"
-                        value={newLeadForm.place}
-                        onChange={(e) => setNewLeadForm((p) => ({ ...p, place: e.target.value }))}
-                        placeholder="e.g. Koduvally, Chemmad"
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm text-gray-900 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Full Address
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={newLeadForm.address}
-                      onChange={(e) => setNewLeadForm((p) => ({ ...p, address: e.target.value }))}
-                      placeholder="Complete postal address / landmark"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm text-gray-900 focus:outline-none resize-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2.5">
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Source
-                      </label>
-                      <select
-                        value={newLeadForm.source}
-                        onChange={(e) => setNewLeadForm((p) => ({ ...p, source: e.target.value }))}
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-2 py-2 text-xs font-semibold focus:outline-none"
-                      >
-                        {LEAD_SOURCES.map((s) => (
-                          <option key={s} value={s}>
-                            {s.replace(/_/g, " ")}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Students
-                      </label>
-                      <input
-                        type="number"
-                        value={newLeadForm.studentCount}
-                        onChange={(e) =>
-                          setNewLeadForm((p) => ({ ...p, studentCount: Number(e.target.value) }))
-                        }
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs sm:text-sm font-bold text-gray-900 text-center focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Teachers
-                      </label>
-                      <input
-                        type="number"
-                        value={newLeadForm.teacherCount}
-                        onChange={(e) =>
-                          setNewLeadForm((p) => ({ ...p, teacherCount: Number(e.target.value) }))
-                        }
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs sm:text-sm font-bold text-gray-900 text-center focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Contact Person Details */}
-                  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">
-                      Primary Contact Person (Optional)
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1 font-medium">Full Name</label>
-                        <input
-                          type="text"
-                          value={newLeadForm.contactName}
-                          onChange={(e) =>
-                            setNewLeadForm((p) => ({ ...p, contactName: e.target.value }))
-                          }
-                          placeholder="e.g. Usthad Abdul Hameed"
-                          className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1 font-medium">Primary Phone</label>
-                        <input
-                          type="tel"
-                          value={newLeadForm.contactPhone}
-                          onChange={(e) =>
-                            setNewLeadForm((p) => ({ ...p, contactPhone: e.target.value }))
-                          }
-                          placeholder="9876543210"
-                          className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-mono focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1 font-medium">Alternative / Secondary Phone</label>
-                        <input
-                          type="tel"
-                          value={newLeadForm.contactSecondaryPhone}
-                          onChange={(e) =>
-                            setNewLeadForm((p) => ({ ...p, contactSecondaryPhone: e.target.value }))
-                          }
-                          placeholder="Alternative phone number"
-                          className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-mono focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1 font-medium">Role / Designation</label>
-                        <select
-                          value={newLeadForm.contactRole}
-                          onChange={(e) =>
-                            setNewLeadForm((p) => ({ ...p, contactRole: e.target.value }))
-                          }
-                          className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none text-gray-800 font-medium"
-                        >
-                          <option value="">Select Role / Designation</option>
-                          {CONTACT_ROLES.map((r) => (
-                            <option key={r} value={r}>
-                              {r}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Existing Software */}
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Current Software / System
-                    </label>
-                    <input
-                      type="text"
-                      value={newLeadForm.existingSoftware}
-                      onChange={(e) =>
-                        setNewLeadForm((p) => ({ ...p, existingSoftware: e.target.value }))
-                      }
-                      placeholder="e.g. Excel, Registers, Custom software"
-                      className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none"
-                    />
-                  </div>
-
-                  {/* Lead Assignment & Sales Attribution Card */}
-                  <div className="bg-emerald-50/50 p-4 rounded-2xl space-y-3.5 border border-emerald-200">
-                    <div className="flex items-center justify-between pb-2 border-b border-emerald-200/70">
-                      <div>
-                        <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
-                          <Users className="w-4 h-4 text-emerald-700" />
-                          Lead Assignment &amp; Attribution
-                        </h4>
-                        <p className="text-xs text-emerald-800 mt-0.5">
-                          Assign lead ownership to sales team and manage commission splits
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Primary Assigned Team Member */}
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Assigned Sales Representative *
-                      </label>
-                      <select
-                        value={newLeadForm.contributors[0]?.userId || ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setNewLeadForm((p) => {
-                            const next = [...p.contributors];
-                            if (next.length === 0) {
-                              next.push({ userId: val, percentage: p.commissionPercentage });
-                            } else {
-                              next[0] = { ...next[0], userId: val };
-                            }
-                            return { ...p, contributors: next };
-                          });
-                        }}
-                        className="w-full min-h-[44px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
-                      >
-                        <option value="">Select Team Member to Assign</option>
-                        {assigneeOptions.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Sales Commission Toggle */}
-                    <div className="flex items-center justify-between pt-1">
-                      <div>
-                        <span className="text-xs font-bold text-gray-800">
-                          Enable Performance Commission
-                        </span>
-                        <p className="text-[11px] text-gray-500">
-                          Track commission rate &amp; multi-rep team splits
-                        </p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={newLeadForm.enableCommission}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setNewLeadForm((p) => ({
-                              ...p,
-                              enableCommission: checked,
-                              contributors:
-                                checked && p.contributors.length === 0
-                                  ? [
-                                      {
-                                        userId: effectiveUserId || assigneeOptions[0]?.id || "",
-                                        percentage: p.commissionPercentage,
-                                      },
-                                    ]
-                                  : p.contributors,
-                            }));
-                          }}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                      </label>
-                    </div>
-
-                    {newLeadForm.enableCommission && (
-                      <div className="space-y-3 pt-2 border-t border-emerald-200">
-                        <div>
-                          <label className="block text-xs text-gray-700 font-bold mb-1">
-                            Total Commission Rate (%)
-                          </label>
-                          <input
-                            type="number"
-                            min={1}
-                            max={100}
-                            value={newLeadForm.commissionPercentage}
-                            onChange={(e) =>
-                              setNewLeadForm((p) => ({
-                                ...p,
-                                commissionPercentage: Number(e.target.value),
-                              }))
-                            }
-                            className="w-full min-h-[44px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-bold text-gray-900 focus:outline-none"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-bold text-gray-700">Attribution Splits:</span>
-                            <span
-                              className={cn(
-                                "font-bold",
-                                Math.abs(
-                                  newLeadForm.contributors.reduce(
-                                    (s, c) => s + Number(c.percentage || 0),
-                                    0
-                                  ) - newLeadForm.commissionPercentage
-                                ) < 0.01
-                                  ? "text-primary-700"
-                                  : "text-rose-600"
-                              )}
-                            >
-                              Split total:{" "}
-                              {newLeadForm.contributors.reduce(
-                                (s, c) => s + Number(c.percentage || 0),
-                                0
-                              )}
-                              % / {newLeadForm.commissionPercentage}%
-                            </span>
-                          </div>
-
-                          {newLeadForm.contributors.map((c, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <select
-                                value={c.userId}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setNewLeadForm((p) => {
-                                    const next = [...p.contributors];
-                                    next[idx].userId = val;
-                                    return { ...p, contributors: next };
-                                  });
-                                }}
-                                className="flex-1 min-h-[40px] bg-white border border-gray-200 rounded-xl px-2 text-xs font-semibold focus:outline-none"
-                              >
-                                <option value="">Select Team Member</option>
-                                {assigneeOptions.map((u) => (
-                                  <option key={u.id} value={u.id}>
-                                    {u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
-                                  </option>
-                                ))}
-                              </select>
-                              <div className="relative w-24">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={100}
-                                  value={c.percentage}
-                                  onChange={(e) => {
-                                    const val = Number(e.target.value);
-                                    setNewLeadForm((p) => {
-                                      const next = [...p.contributors];
-                                      next[idx].percentage = val;
-                                      return { ...p, contributors: next };
-                                    });
-                                  }}
-                                  className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl pr-6 pl-2 text-xs font-bold text-right focus:outline-none"
-                                />
-                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold">
-                                  %
-                                </span>
-                              </div>
-                              {newLeadForm.contributors.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setNewLeadForm((p) => ({
-                                      ...p,
-                                      contributors: p.contributors.filter((_, i) => i !== idx),
-                                    }))
-                                  }
-                                  className="p-2 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
-                                >
-                                  <Trash className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          ))}
-
-                          {newLeadForm.contributors.length < 3 && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setNewLeadForm((p) => ({
-                                  ...p,
-                                  contributors: [
-                                    ...p.contributors,
-                                    { userId: "", percentage: 0 },
-                                  ],
-                                }))
-                              }
-                              className="text-xs font-bold text-primary-700 hover:underline pt-1 flex items-center gap-1"
-                            >
-                              <Plus className="w-3.5 h-3.5" /> Add Team Contributor
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="sticky bottom-0 bg-white/95 backdrop-blur-md pt-3 pb-2 border-t border-gray-100 mt-4 z-10">
-                    <button
-                      type="submit"
-                      disabled={actionLoading}
-                      className="w-full min-h-[48px] bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs sm:text-sm py-3 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
-                    >
-                      {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                      <span>Register Lead</span>
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* ── Edit Lead Drawer ── */}
-        <AnimatePresence>
-          {showEditDrawer && (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-end p-0">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.5 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setShowEditDrawer(false)}
-                className="fixed inset-0 bg-black backdrop-blur-xs"
-              />
-              <motion.div
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ type: "spring", damping: 28, stiffness: 260 }}
-                className="relative bg-white w-full max-w-lg h-full max-h-screen overflow-y-auto p-4 sm:p-7 space-y-5 sm:space-y-6 shadow-2xl z-10 flex flex-col"
-              >
-                <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-                  <div>
-                    <h3 className="text-xl font-black text-gray-900">Edit Lead Profile</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Update institution parameters and contact data</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowEditDrawer(false)}
-                    className="p-2 text-gray-400 hover:bg-gray-100 rounded-xl"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleSaveEditLead} className="space-y-4 flex-1">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Madrasa Name *
-                    </label>
-                    <input
-                      required
-                      type="text"
-                      value={editLeadForm.name}
-                      onChange={(e) => setEditLeadForm((p) => ({ ...p, name: e.target.value }))}
-                      className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Pipeline Stage
-                      </label>
-                      <select
-                        value={editLeadForm.status}
-                        onChange={(e) => setEditLeadForm((p) => ({ ...p, status: e.target.value }))}
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
-                      >
-                        {LEAD_STATUSES.map((s) => (
-                          <option key={s} value={s}>
-                            {LEAD_STATUS_LABELS[s] ?? s.replace(/_/g, " ")}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Syllabus Type
-                      </label>
-                      <select
-                        value={editLeadForm.type}
-                        onChange={(e) => setEditLeadForm((p) => ({ ...p, type: e.target.value }))}
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
-                      >
-                        {["Samastha", "AP", "Fadhila", "Other"].map((t) => (
-                          <option key={t} value={t}>
-                            {t}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        District
-                      </label>
-                      <select
-                        value={editLeadForm.districtId}
-                        onChange={(e) => {
-                          const d = districts.find((d) => d.id === e.target.value);
-                          setEditLeadForm((p) => ({
-                            ...p,
-                            districtId: e.target.value,
-                            district: d?.name ?? "",
-                          }));
-                        }}
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
-                      >
-                        <option value="">Select District</option>
-                        {districts.map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Place / Town
-                      </label>
-                      <input
-                        type="text"
-                        value={editLeadForm.place}
-                        onChange={(e) => setEditLeadForm((p) => ({ ...p, place: e.target.value }))}
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm text-gray-900 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Full Address
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={editLeadForm.address}
-                      onChange={(e) => setEditLeadForm((p) => ({ ...p, address: e.target.value }))}
-                      placeholder="Complete postal address / landmark"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm text-gray-900 focus:outline-none resize-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Lead Acquisition Source
-                    </label>
-                    <select
-                      value={editLeadForm.source}
-                      onChange={(e) => setEditLeadForm((p) => ({ ...p, source: e.target.value }))}
-                      className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
-                    >
-                      {LEAD_SOURCES.map((s) => (
-                        <option key={s} value={s}>
-                          {s.replace(/_/g, " ")}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Students Count
-                      </label>
-                      <input
-                        type="number"
-                        value={editLeadForm.studentCount}
-                        onChange={(e) =>
-                          setEditLeadForm((p) => ({ ...p, studentCount: Number(e.target.value) }))
-                        }
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm font-bold text-gray-900 focus:outline-none"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Teachers Count
-                      </label>
-                      <input
-                        type="number"
-                        value={editLeadForm.teacherCount}
-                        onChange={(e) =>
-                          setEditLeadForm((p) => ({ ...p, teacherCount: Number(e.target.value) }))
-                        }
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm font-bold text-gray-900 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Existing Software */}
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Current Software / System
-                    </label>
-                    <input
-                      type="text"
-                      value={editLeadForm.existingSoftware}
-                      onChange={(e) =>
-                        setEditLeadForm((p) => ({ ...p, existingSoftware: e.target.value }))
-                      }
-                      placeholder="e.g. Excel, Registers, Custom software"
-                      className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none"
-                    />
-                  </div>
-
-                  {/* Primary Contact Person Edit */}
-                  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">
-                        Primary Contact Person
-                      </h4>
-                      <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-0.5 rounded-full">
-                        Key Decision Maker
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1 font-medium">Name</label>
-                        <input
-                          type="text"
-                          value={editLeadForm.contactName}
-                          onChange={(e) =>
-                            setEditLeadForm((p) => ({ ...p, contactName: e.target.value }))
-                          }
-                          className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1 font-medium">Primary Phone</label>
-                        <input
-                          type="tel"
-                          value={editLeadForm.contactPhone}
-                          onChange={(e) =>
-                            setEditLeadForm((p) => ({ ...p, contactPhone: e.target.value }))
-                          }
-                          className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-mono focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1 font-medium">Alternative / Secondary Phone</label>
-                        <input
-                          type="tel"
-                          value={editLeadForm.contactSecondaryPhone}
-                          onChange={(e) =>
-                            setEditLeadForm((p) => ({
-                              ...p,
-                              contactSecondaryPhone: e.target.value,
-                            }))
-                          }
-                          placeholder="Alternative phone number"
-                          className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-mono focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1 font-medium">Role / Designation</label>
-                        <select
-                          value={editLeadForm.contactRole}
-                          onChange={(e) =>
-                            setEditLeadForm((p) => ({ ...p, contactRole: e.target.value }))
-                          }
-                          className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none text-gray-800 font-medium"
-                        >
-                          <option value="">Select Role / Designation</option>
-                          {CONTACT_ROLES.map((r) => (
-                            <option key={r} value={r}>
-                              {r}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Lead Assignment & Sales Attribution Card */}
-                  <div className="bg-emerald-50/50 p-4 rounded-2xl space-y-3.5 border border-emerald-200">
-                    <div className="flex items-center justify-between pb-2 border-b border-emerald-200/70">
-                      <div>
-                        <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
-                          <Users className="w-4 h-4 text-emerald-700" />
-                          Lead Assignment &amp; Attribution
-                        </h4>
-                        <p className="text-xs text-emerald-800 mt-0.5">
-                          Assign lead ownership to sales team and manage commission splits
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Primary Assigned Team Member */}
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Assigned Sales Representative *
-                      </label>
-                      <select
-                        value={editLeadForm.contributors[0]?.userId || ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setEditLeadForm((p) => {
-                            const next = [...p.contributors];
-                            if (next.length === 0) {
-                              next.push({ userId: val, percentage: p.commissionPercentage });
-                            } else {
-                              next[0] = { ...next[0], userId: val };
-                            }
-                            return { ...p, contributors: next };
-                          });
-                        }}
-                        className="w-full min-h-[44px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
-                      >
-                        <option value="">Select Team Member to Assign</option>
-                        {assigneeOptions.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Sales Commission Toggle */}
-                    <div className="flex items-center justify-between pt-1">
-                      <div>
-                        <span className="text-xs font-bold text-gray-800">
-                          Enable Performance Commission
-                        </span>
-                        <p className="text-[11px] text-gray-500">
-                          Track commission rate &amp; multi-rep team splits
-                        </p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={editLeadForm.enableCommission}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setEditLeadForm((p) => ({
-                              ...p,
-                              enableCommission: checked,
-                              contributors:
-                                checked && p.contributors.length === 0
-                                  ? [
-                                      {
-                                        userId: effectiveUserId || assigneeOptions[0]?.id || "",
-                                        percentage: p.commissionPercentage,
-                                      },
-                                    ]
-                                  : p.contributors,
-                            }));
-                          }}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                      </label>
-                    </div>
-
-                    {editLeadForm.enableCommission && (
-                      <div className="space-y-3 pt-2 border-t border-emerald-200">
-                        <div>
-                          <label className="block text-xs text-gray-700 font-bold mb-1">
-                            Total Commission Rate (%)
-                          </label>
-                          <input
-                            type="number"
-                            min={1}
-                            max={100}
-                            value={editLeadForm.commissionPercentage}
-                            onChange={(e) =>
-                              setEditLeadForm((p) => ({
-                                ...p,
-                                commissionPercentage: Number(e.target.value),
-                              }))
-                            }
-                            className="w-full min-h-[44px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-bold text-gray-900 focus:outline-none"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-bold text-gray-700">Attribution Splits:</span>
-                            <span
-                              className={cn(
-                                "font-bold",
-                                Math.abs(
-                                  editLeadForm.contributors.reduce(
-                                    (s, c) => s + Number(c.percentage || 0),
-                                    0
-                                  ) - editLeadForm.commissionPercentage
-                                ) < 0.01
-                                  ? "text-primary-700"
-                                  : "text-rose-600"
-                              )}
-                            >
-                              Split total:{" "}
-                              {editLeadForm.contributors.reduce(
-                                (s, c) => s + Number(c.percentage || 0),
-                                0
-                              )}
-                              % / {editLeadForm.commissionPercentage}%
-                            </span>
-                          </div>
-
-                          {editLeadForm.contributors.map((c, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <select
-                                value={c.userId}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setEditLeadForm((p) => {
-                                    const next = [...p.contributors];
-                                    next[idx].userId = val;
-                                    return { ...p, contributors: next };
-                                  });
-                                }}
-                                className="flex-1 min-h-[40px] bg-white border border-gray-200 rounded-xl px-2 text-xs font-semibold focus:outline-none"
-                              >
-                                <option value="">Select Team Member</option>
-                                {assigneeOptions.map((u) => (
-                                  <option key={u.id} value={u.id}>
-                                    {u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
-                                  </option>
-                                ))}
-                              </select>
-                              <div className="relative w-24">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={100}
-                                  value={c.percentage}
-                                  onChange={(e) => {
-                                    const val = Number(e.target.value);
-                                    setEditLeadForm((p) => {
-                                      const next = [...p.contributors];
-                                      next[idx].percentage = val;
-                                      return { ...p, contributors: next };
-                                    });
-                                  }}
-                                  className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl pr-6 pl-2 text-xs font-bold text-right focus:outline-none"
-                                />
-                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold">
-                                  %
-                                </span>
-                              </div>
-                              {editLeadForm.contributors.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setEditLeadForm((p) => ({
-                                      ...p,
-                                      contributors: p.contributors.filter((_, i) => i !== idx),
-                                    }))
-                                  }
-                                  className="p-2 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
-                                >
-                                  <Trash className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          ))}
-
-                          {editLeadForm.contributors.length < 3 && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setEditLeadForm((p) => ({
-                                  ...p,
-                                  contributors: [
-                                    ...p.contributors,
-                                    { userId: "", percentage: 0 },
-                                  ],
-                                }))
-                              }
-                              className="text-xs font-bold text-primary-700 hover:underline pt-1 flex items-center gap-1"
-                            >
-                              <Plus className="w-3.5 h-3.5" /> Add Team Contributor
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="sticky bottom-0 bg-white/95 backdrop-blur-md pt-3 pb-2 border-t border-gray-100 mt-4 z-10 flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowEditDrawer(false)}
-                      className="min-h-[44px] flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs sm:text-sm rounded-xl transition-all"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={editLeadSaving}
-                      className="min-h-[44px] flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
-                    >
-                      {editLeadSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                      <span>Save Changes</span>
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* Quick Assign / Reassign Modal */}
-        <AnimatePresence>
-          {showQuickAssignModal && selectedLead && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.5 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setShowQuickAssignModal(false)}
-                className="fixed inset-0 bg-black backdrop-blur-xs"
-              />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="relative bg-white w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl z-10 space-y-5"
-              >
-                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                  <div>
-                    <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                      <Users className="w-5 h-5 text-primary-600" />
-                      Assign Lead
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Assign ownership for <strong className="text-gray-700">{selectedLead.name}</strong>
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickAssignModal(false)}
-                    className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-xl"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Select Sales Representative *
-                    </label>
-                    <select
-                      value={quickAssignUserId}
-                      onChange={(e) => setQuickAssignUserId(e.target.value)}
-                      className="w-full min-h-[46px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
-                    >
-                      <option value="">-- Choose Team Member --</option>
-                      {assigneeOptions.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {selectedLead.contributors && selectedLead.contributors.length > 0 && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-600 space-y-1">
-                      <span className="font-bold text-gray-700">Currently assigned to:</span>
-                      <p className="font-semibold text-gray-900">
-                        {selectedLead.contributors.map((c) => c.user?.name).filter(Boolean).join(", ")}
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowQuickAssignModal(false)}
-                      className="min-h-[44px] flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs sm:text-sm rounded-xl transition-all"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      disabled={quickAssignLoading || !quickAssignUserId}
-                      onClick={() => handleQuickAssign(quickAssignUserId)}
-                      className="min-h-[44px] flex-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
-                    >
-                      {quickAssignLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="w-4 h-4" />
-                      )}
-                      <span>Confirm Assignment</span>
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* Bulk Lead Action Modal */}
-        <AnimatePresence>
-          {bulkModalType && selectedLeadIds.size > 0 && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.5 }}
-                exit={{ opacity: 0 }}
-                onClick={() => !bulkActionLoading && setBulkModalType(null)}
-                className="fixed inset-0 bg-black backdrop-blur-xs"
-              />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="relative bg-white w-full max-w-lg rounded-3xl p-6 sm:p-7 shadow-2xl z-10 space-y-5"
-              >
-                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                  <div>
-                    <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                      {bulkModalType === "ASSIGN" && <Users className="w-5 h-5 text-blue-600" />}
-                      {bulkModalType === "STATUS" && <Sparkles className="w-5 h-5 text-amber-600" />}
-                      {bulkModalType === "FOLLOW_UP" && <CalendarClock className="w-5 h-5 text-emerald-600" />}
-                      {bulkModalType === "DELETE" && <Trash className="w-5 h-5 text-rose-600" />}
-                      <span>
-                        {bulkModalType === "ASSIGN" && "Bulk Assign Leads"}
-                        {bulkModalType === "STATUS" && "Bulk Move Pipeline Stage"}
-                        {bulkModalType === "FOLLOW_UP" && "Bulk Schedule Follow-up"}
-                        {bulkModalType === "DELETE" && "Bulk Delete Leads"}
-                      </span>
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Applying changes to <strong className="text-gray-800">{selectedLeadIds.size}</strong> selected lead(s)
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={bulkActionLoading}
-                    onClick={() => setBulkModalType(null)}
-                    className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-xl disabled:opacity-50"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  {/* ASSIGN MODE */}
-                  {bulkModalType === "ASSIGN" && (
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Select Sales Representative *
-                      </label>
-                      <select
-                        value={bulkSelectedUserId}
-                        onChange={(e) => setBulkSelectedUserId(e.target.value)}
-                        className="w-full min-h-[46px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
-                      >
-                        <option value="">-- Choose Team Member --</option>
-                        {assigneeOptions.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* STATUS MODE */}
-                  {bulkModalType === "STATUS" && (
-                    <div className="space-y-3">
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                          Target Pipeline Stage *
-                        </label>
-                        <select
-                          value={bulkSelectedStatus}
-                          onChange={(e) => setBulkSelectedStatus(e.target.value)}
-                          className="w-full min-h-[46px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
-                        >
-                          {LEAD_STATUSES.map((s) => (
-                            <option key={s} value={s}>
-                              {LEAD_STATUS_LABELS[s] || s}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                          Activity Remarks / Notes (Optional)
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={bulkRemarks}
-                          onChange={(e) => setBulkRemarks(e.target.value)}
-                          placeholder="Reason or activity note (e.g., Campaign outreach, status migration)..."
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* FOLLOW_UP MODE */}
-                  {bulkModalType === "FOLLOW_UP" && (
-                    <div className="space-y-3">
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                          Next Follow-up Date
-                        </label>
-                        <input
-                          type="date"
-                          value={bulkFollowUpDate}
-                          onChange={(e) => setBulkFollowUpDate(e.target.value)}
-                          className="w-full min-h-[46px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
-                        />
-                      </div>
-
-                      {/* Quick Date Shortcuts */}
-                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                        {[
-                          { label: "Today", days: 0 },
-                          { label: "Tomorrow", days: 1 },
-                          { label: "+3 Days", days: 3 },
-                          { label: "+1 Week", days: 7 },
-                        ].map((q) => (
-                          <button
-                            key={q.label}
-                            type="button"
-                            onClick={() => {
-                              const d = new Date();
-                              d.setDate(d.getDate() + q.days);
-                              setBulkFollowUpDate(formatLocalDateForInput(d));
-                            }}
-                            className="px-2.5 py-1 text-xs font-bold rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-all active:scale-95"
-                          >
-                            {q.label}
-                          </button>
-                        ))}
-                        {bulkFollowUpDate && (
-                          <button
-                            type="button"
-                            onClick={() => setBulkFollowUpDate("")}
-                            className="px-2.5 py-1 text-xs font-bold rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition-all ml-auto active:scale-95"
-                          >
-                            Clear Date
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                          Follow-up Agenda / Remarks (Optional)
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={bulkRemarks}
-                          onChange={(e) => setBulkRemarks(e.target.value)}
-                          placeholder="Discussion agenda, questions to ask, or note..."
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* DELETE MODE */}
-                  {bulkModalType === "DELETE" && (
-                    <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 space-y-2 text-rose-900">
-                      <div className="flex items-center gap-2 font-bold text-sm text-rose-700">
-                        <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
-                        <span>Irreversible Danger Action</span>
-                      </div>
-                      <p className="text-xs text-rose-800 leading-relaxed">
-                        Are you sure you want to permanently delete these <strong>{selectedLeadIds.size}</strong> leads? All associated activities, follow-up timeline entries, and contact info will be erased immediately.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-3 pt-3">
-                    <button
-                      type="button"
-                      disabled={bulkActionLoading}
-                      onClick={() => setBulkModalType(null)}
-                      className="min-h-[44px] flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs sm:text-sm rounded-xl transition-all disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      disabled={bulkActionLoading || (bulkModalType === "ASSIGN" && !bulkSelectedUserId)}
-                      onClick={handleExecuteBulkAction}
-                      className={cn(
-                        "min-h-[44px] flex-1 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98] disabled:opacity-50",
-                        bulkModalType === "DELETE"
-                          ? "bg-rose-600 hover:bg-rose-700"
-                          : "bg-primary-600 hover:bg-primary-700"
-                      )}
-                    >
-                      {bulkActionLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : bulkModalType === "DELETE" ? (
-                        <Trash className="w-4 h-4" />
-                      ) : (
-                        <CheckCircle2 className="w-4 h-4" />
-                      )}
-                      <span>
-                        {bulkModalType === "DELETE"
-                          ? `Delete ${selectedLeadIds.size} Leads`
-                          : `Apply to ${selectedLeadIds.size} Leads`}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* Bulk Import Modal */}
         <ImportModal
           show={showImportModal}
           onClose={() => setShowImportModal(false)}
           onComplete={() => {
-            toast("Import completed successfully");
             setShowImportModal(false);
             loadData();
           }}

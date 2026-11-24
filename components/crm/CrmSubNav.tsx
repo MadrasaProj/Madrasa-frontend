@@ -96,7 +96,7 @@ export function CrmSubNav({ className }: CrmSubNavProps) {
     >
       <div
         ref={containerRef}
-        className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto scroll-smooth scrollbar-none py-0.5 px-0.5 -mx-0.5 touch-pan-x"
+        className="flex items-center gap-1 sm:gap-1.5 flex-wrap py-0.5 px-0.5"
       >
         {CRM_NAV_ITEMS.map((item) => {
           const isActive =
@@ -110,8 +110,8 @@ export function CrmSubNav({ className }: CrmSubNavProps) {
               ref={isActive ? activeTabRef : undefined}
               to={item.href}
               className={cn(
-                "group shrink-0 inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-150",
-                "min-h-[40px] sm:min-h-[42px] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                "group shrink-0 inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-150",
+                "min-h-[38px] sm:min-h-[40px] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
                 isActive
                   ? "bg-emerald-600 text-white shadow-xs font-black ring-1 ring-emerald-700/20"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 active:bg-gray-200/60"
@@ -123,8 +123,7 @@ export function CrmSubNav({ className }: CrmSubNavProps) {
                   isActive ? "text-white" : "text-emerald-600"
                 )}
               />
-              <span className="hidden sm:inline">{item.label}</span>
-              <span className="inline sm:hidden">{item.shortLabel}</span>
+              <span className="inline">{item.label}</span>
               {item.badge !== undefined && (
                 <span
                   className={cn(

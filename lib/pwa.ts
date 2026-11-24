@@ -8,8 +8,42 @@ export interface BeforeInstallPromptEvent extends Event {
 }
 
 /**
+ * Checks if the current environment is running wrapped inside a native mobile app
+ * (React Native WebView, Capacitor, Cordova, Flutter WebView, Android/iOS WebView, or custom wrapper parameters).
+ */
+export function isMobileAppWrapper(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const hasInjectedBridge = Boolean(
+      (window as any).ReactNativeWebView ||
+      (window as any).Capacitor ||
+      (window as any).cordova ||
+      (window as any).flutter_inappwebview ||
+      (window as any).__MOBILE_APP_WRAPPER__
+    );
+
+    const ua = navigator.userAgent || "";
+    const isWebViewUa =
+      /wv|WebView|Android.*Version\/[0-9.]*\s+Chrome\/[0-9.]*\s+Mobile/i.test(ua) ||
+      (/(iPhone|iPod|iPad).*AppleWebKit(?!.*Safari)/i.test(ua) && !((navigator as any).standalone));
+
+    const isUrlWrapper =
+      window.location?.search?.includes("mode=app") ||
+      window.location?.search?.includes("mode=mobile") ||
+      window.location?.search?.includes("app=true") ||
+      window.location?.search?.includes("isApp=true") ||
+      window.location?.search?.includes("platform=mobile") ||
+      window.location?.search?.includes("wrapper=true");
+
+    return hasInjectedBridge || isWebViewUa || isUrlWrapper;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Checks if the current window/environment is running in standalone PWA mode,
- * fullscreen, minimal-ui, window-controls-overlay, or as an Android TWA.
+ * fullscreen, minimal-ui, window-controls-overlay, an Android TWA, or a mobile app wrapper.
  */
 export function isStandalone(): boolean {
   if (typeof window === "undefined") return false;
@@ -27,7 +61,13 @@ export function isStandalone(): boolean {
       window.location?.search?.includes("mode=pwa") ||
       window.location?.search?.includes("source=pwa");
 
-    return Boolean(isStandaloneDisplay || isIosStandalone || isAndroidTwa || isUrlStandalone);
+    return Boolean(
+      isStandaloneDisplay ||
+      isIosStandalone ||
+      isAndroidTwa ||
+      isUrlStandalone ||
+      isMobileAppWrapper()
+    );
   } catch {
     return false;
   }

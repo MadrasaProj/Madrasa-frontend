@@ -9,8 +9,14 @@ import {
   markPwaAsInstalled,
   checkPwaInstalledAsync,
 } from "@/lib/pwa";
+import { initMobileWrapper } from "@/lib/mobile-wrapper";
 import "../app/globals.css";
 import "@leafer-in/export";
+
+// Initialize mobile wrapper optimizations globally
+if (typeof window !== "undefined") {
+  initMobileWrapper();
+}
 
 // Capture PWA install prompt globally and synchronize install status
 if (typeof window !== "undefined") {
