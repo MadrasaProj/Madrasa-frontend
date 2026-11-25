@@ -37,26 +37,60 @@ export function getCoverImageUrl(sceneData: unknown): string | null {
 
 // ── Core capture ──────────────────────────────────────────────────────────────
 
+const XLINK_NS = "http://www.w3.org/1999/xlink";
+
+async function fetchAsDataUrl(src: string): Promise<string> {
+  const res = await fetch(src, { mode: "cors", cache: "no-store" });
+  if (!res.ok) throw new Error(`Image fetch failed: ${res.status}`);
+  const blob = await res.blob();
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 /**
  * html2canvas can only rasterise images it can read. Converting remote images
  * (R2 avatars/logos) to data URLs before capture makes exports reliable even
  * when the canvas library's own CORS handling is inconsistent.
+ *
+ * Also handles <image> elements inside the inline SVG posters — those are the
+ * avatar slots and are otherwise skipped by an `img`-only query.
  */
 export async function inlineImagesForCapture(root: ParentNode): Promise<void> {
-  const images = Array.from(root.querySelectorAll("img"));
-  await Promise.all(images.map(async (img) => {
-    const src = img.getAttribute("src");
-    if (!src || src.startsWith("data:") || src.startsWith("blob:")) return;
+  const images = Array.from(root.querySelectorAll("img, image"));
+  await Promise.all(images.map(async (node) => {
+    const isSvgImage = node.tagName.toLowerCase() === "image";
+    const src = isSvgImage
+      ? (node.getAttribute("href") || node.getAttributeNS(XLINK_NS, "href"))
+      : node.getAttribute("src");
+    if (!src || /^(data:|blob:)/.test(src)) return;
+
     try {
-      const res = await fetch(src, { mode: "cors", cache: "no-store" });
-      if (!res.ok) return;
-      const blob = await res.blob();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload  = () => resolve(String(reader.result));
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+      const dataUrl = await fetchAsDataUrl(src);
+
+      if (isSvgImage) {
+        node.setAttribute("href", dataUrl);
+        node.setAttributeNS(XLINK_NS, "xlink:href", dataUrl);
+        // The SVG image reloads from its new data URL; wait briefly so the
+        // serialised SVG used by html2canvas contains the loaded avatar.
+        await new Promise<void>((resolve) => {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            resolve();
+          };
+          node.addEventListener("load", finish, { once: true });
+          node.addEventListener("error", finish, { once: true });
+          setTimeout(finish, 1500);
+        });
+        return;
+      }
+
+      const img = node as HTMLImageElement;
       if (!img.complete || img.naturalWidth === 0) {
         await new Promise<void>((resolve) => {
           img.onload = img.onerror = () => resolve();

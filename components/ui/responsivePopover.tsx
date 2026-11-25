@@ -283,7 +283,7 @@ export function ResponsivePopover({
             {renderClose && <DrawerClose aria-label="Close" className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"><X className="size-5.5 md:size-5" /></DrawerClose>}
           </DrawerHeader>
         )}
-        <div className={cn("min-h-0 overflow-y-auto overscroll-contain pb-[26px] px-4 md:pb-0", compact ? "flex-auto" : "flex-1", !footer && isBottom && "pb-safe", contentClassName)}>{children}</div>
+        <div className={cn("min-h-0 overflow-y-auto overscroll-contain pb-[16px] px-4 md:pb-[20px]", compact ? "flex-auto" : "flex-1", !footer && isBottom && " ", contentClassName)}>{children}</div>
         {footer && <div className={cn("shrink-0", isBottom && "pb-safe")}>{footer}</div>}
       </DrawerContent>
     </BaseDrawer>

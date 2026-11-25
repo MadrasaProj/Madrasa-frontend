@@ -4,9 +4,8 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
-import { RankPoster } from "@/components/exam/RankPoster";
 import { ResultCardPoster } from "@/components/poster/ResultCardPoster";
-import { ResultAnnouncementPoster } from "@/components/exam/ResultAnnouncementPoster";
+import { getTopRankers, RankIndividualSvgPoster, RankSvgPoster } from "@/components/poster/SvgPoster";
 import {
   type ClassReport, type ClassReportRow, type ResultStatus, type TotalGrade,
 } from "@/lib/results-api";
@@ -179,38 +178,28 @@ export function ReportPostersTab({ report, posterStudentId, setPosterStudentId, 
   madrasaLogo?: string | null;
   studentPhotoMap?: Record<string, string | null>;
 }) {
-  const rankedStudents = report.students.filter((r) => r.summary.rank !== null && r.summary.rank <= 3);
-  const posterRow = posterStudentId ? report.students.find((r) => r.student.id === posterStudentId) : null;
-  const totalStudents = report.stats?.totalStudents ?? report.students.length;
-  const passCount = report.stats?.passedCount ?? undefined;
+  const rankedStudents = getTopRankers(report.students);
+  const posterRow = posterStudentId ? rankedStudents.find((r) => r.student.id === posterStudentId) : null;
 
   return (
     <div className="space-y-8">
-      <div>
-        <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
-          Result Announcement Poster
-        </h3>
-        <div className="max-w-sm mx-auto">
-          <ResultAnnouncementPoster
-            exam={report.exam}
-            madrasaName={madrasaName}
-            madrasaLogo={madrasaLogo}
-            stats={{
-              totalStudents,
-              passCount: passCount > 0 ? passCount : undefined,
-              className: report.class.name,
-            }}
-          />
-        </div>
-      </div>
-
-      {rankedStudents.length > 0 && (
+      {rankedStudents.length > 0 ? (
         <div>
           <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
             Rank Posters
           </h3>
+          <RankSvgPoster
+            examName={report.exam.name}
+            madrasaName={madrasaName}
+            classNameLabel={report.class.name}
+            toppers={rankedStudents.map((row) => ({
+              rank: row.summary.rank ?? 0,
+              name: row.student.name,
+              percentage: row.summary.totalPercentage,
+              avatarUrl: studentPhotoMap?.[row.student.id] ?? null,
+            }))}
+          />
           <ScrollableTabs
             ariaLabel="Choose rank poster"
             options={rankedStudents.map((row) => ({
@@ -229,9 +218,24 @@ export function ReportPostersTab({ report, posterStudentId, setPosterStudentId, 
               animate={{ opacity: 1, y: 0 }}
               className="max-w-sm mx-auto"
             >
-              <RankPoster row={posterRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} studentPhotoMap={studentPhotoMap} />
+              <RankIndividualSvgPoster
+                examName={report.exam.name}
+                madrasaName={madrasaName}
+                classNameLabel={report.class.name}
+                topper={{
+                  rank: posterRow.summary.rank ?? 0,
+                  name: posterRow.student.name,
+                  percentage: posterRow.summary.totalPercentage,
+                  avatarUrl: studentPhotoMap?.[posterRow.student.id] ?? null,
+                }}
+              />
             </motion.div>
           )}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
+          <span className="text-5xl">🏆</span>
+          <p className="text-sm">No ranked students to show rank posters</p>
         </div>
       )}
     </div>

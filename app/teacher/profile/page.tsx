@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useAvatarCropper } from "@/hooks/useAvatarCropper";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -126,6 +127,7 @@ export default function TeacherProfilePage() {
   // Photo Upload States
   const [picPreview, setPicPreview] = useState<string | null>(user?.photoUrl ?? user?.photo ?? null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const { crop: cropAvatar, modal: avatarCropperModal } = useAvatarCropper();
 
   // Security Form States
   const [currentPassword, setCurrentPassword] = useState("");
@@ -184,8 +186,11 @@ export default function TeacherProfilePage() {
   };
 
   const handlePicFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !accessToken) return;
+    const source = e.target.files?.[0];
+    e.target.value = "";
+    if (!source || !accessToken) return;
+    const file = await cropAvatar(source);
+    if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
       setError("Profile image must be under 2MB.");
       return;
@@ -994,6 +999,7 @@ export default function TeacherProfilePage() {
         </div>
 
       </ResponsivePopover>
+      {avatarCropperModal}
     </DashboardLayout>
   );
 }

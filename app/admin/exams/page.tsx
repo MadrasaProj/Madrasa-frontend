@@ -70,11 +70,15 @@ import {
   FileText,
   ArrowUpDown,
   ChevronRight,
+  EllipsisVertical,
+  ArchiveX,
+  PenSquare,
 } from "lucide-react";
 import { ExamStatusBadge } from "@/components/exam/ExamStatusBadge";
 import { MarkEntryGrid } from "@/components/exam/MarkEntryGrid";
 import { ClassResultTable } from "@/components/exam/ClassResultTable";
 import { ReportMarklistTab, ReportStatusTab, ReportPostersTab } from "@/components/exam/AdminExamReportTabs";
+import { ResultAnnouncementSvgPoster } from "@/components/poster/SvgPoster";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 import { useExamColumns } from "@/components/exam/ExamColumns";
 import { fmt, shortDate, getExamCategories } from "@/lib/exam-utils";
@@ -82,6 +86,7 @@ import {
   computeSummary, setFinalStatus,
   type ClassReport, type ClassReportRow, type ResultStatus, type TotalGrade,
 } from "@/lib/results-api";
+import { Icon } from "@iconify/react";
 
 interface ExamForm {
   name: string;
@@ -120,7 +125,7 @@ interface MarkEntryState {
   error: string | null;
 }
 
-type ReportTab = "table" | "marklist" | "status" | "posters";
+type ReportTab = "table" | "marklist" | "status" | "announcement" | "posters";
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -181,6 +186,7 @@ export default function AdminExamsPage() {
   const subjectRequestRef = useRef(0);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [examDrawerOptionsOpen, setExamDrawerOptionsOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [form, setForm] = useState<ExamForm>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
@@ -984,10 +990,14 @@ export default function AdminExamsPage() {
         fullHeight
         showBackButton={contentTab === "report"}
         onBack={() => setContentTab("markentry")}
+        headerAction={
+
+          <Button onClick={w => setExamDrawerOptionsOpen(e => !e)} variant={"ghost"} size={"icon"}><EllipsisVertical /></Button>
+        }
         title={contentTab === "report" ? `${classDrawerExam?.name ?? "Exam"} · Report` : classDrawerExam?.name ?? "Exam details"}
         // description={classDrawerExam?.name}
         className="shadow-none md:max-w-none"
-        
+
         footer={classDrawerExam && selectedClass && contentTab === "markentry" ? (
           <div className="border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
             <ButtonGroup aria-label="Mark entry actions" className="ml-auto w-full sm:w-auto">
@@ -1006,73 +1016,87 @@ export default function AdminExamsPage() {
       >
         {classDrawerExam && (
           <>
-            <div className="flex shrink-0 justify-end border-b border-gray-100 px-4 py-3 sm:px-6">
-              <ButtonGroup aria-label="Exam actions">
-                {contentTab === "report" && classDrawerExam.publishedDate && (
-                  <Button type="button" variant="outline" className="shadow-none" onClick={() => { void handleUnpublishResults(); }}>
-                    Unpublish results
-                  </Button>
-                )}
-                <Button type="button" variant="outline" className="shadow-none" onClick={() => { closeClassDrawer(); openEditDrawer(classDrawerExam); }}>Edit exam</Button>
-                <Button type="button" variant="destructive" className="shadow-none" onClick={() => { closeClassDrawer(); startDeleteExam(classDrawerExam); }}>Delete exam</Button>
-              </ButtonGroup>
-            </div>
-              <div className="flex flex-1 overflow-hidden">
-                <div className="flex-1 flex flex-col min-w-0 min-h-0">
-                  <div className="shrink-0 border-b border-gray-100 px-4 py-3 sm:px-6">
-                    <h3 className="mb-1 text-xs font-semibold text-gray-500">Class</h3>
-                    <ScrollableTabs
-                      ariaLabel="Choose class"
+
+            <div className="flex flex-1 overflow-hidden">
+              <div className="flex-1 flex flex-col min-w-0 min-h-0">
+                <div className="  flex    gap-2 px-4 py-3 sm:px-6">
+                  {/* <h3 className="mb-1 text-xs font-semibold text-gray-500">Class</h3> */}
+                  <div className=" lg:w-max  w-full  ">
+
+                    <DrawerSelector
                       options={classes.map((cls) => ({ value: cls.id, label: cls.name }))}
                       value={selectedClassTab ?? ""}
-                      onValueChange={selectClassTab}
+                      className=" "
+                      onChange={selectClassTab}
+                      title="Class"
                     />
                   </div>
 
-                  {selectedClass ? (
-                    <div className="flex-1 flex flex-col min-h-0">
-                      <div className="px-5 pt-4 pb-2 shrink-0">
-                        <h4 className="font-bold text-gray-900 text-base">
-                          {selectedClass.name}
-                        </h4>
-                        {selectedClass.classTeacher?.name && (
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {selectedClass.classTeacher.name}
-                          </p>
-                        )}
-                      </div>
-
-                      {contentTab === "markentry" && (
-                        <div className="shrink-0 px-4 pt-2 sm:px-6">
-                          <h3 className="mb-1 text-xs font-semibold text-gray-500">Subject</h3>
-                          {markEntry.subjects.length > 0 ? (
-                            <ScrollableTabs
-                              ariaLabel="Choose subject"
-                              options={markEntry.subjects.map((subject) => {
-                                const effMax = getEffectiveMaxMarks(classDrawerExam, selectedClass, subject, classDrawerExam?.maxMarks ?? 50);
-                                return {
-                                  value: subject.id,
-                                  label: `${subject.name} (${effMax})`,
-                                };
-                              })}
-                              value={markEntry.subjectId}
-                              onValueChange={(subjectId) => {
-                                if (subjectId === markEntry.subjectId) return;
-                                subjectRequestRef.current += 1;
-                                setMarksDirty(false);
-                                setMarkEntry((previous) => ({ ...previous, subjectId, scores: {} }));
-                              }}
-                              disabled={markEntry.loading || markEntry.saving}
-                            />
-                          ) : (
-                            <p className="px-1 py-3 text-sm text-gray-500">{markEntry.loading ? "Loading subjects…" : "No subjects available"}</p>
-                          )}
-                        </div>
+                  {selectedClass && contentTab === "markentry" && (
+                    <div className=" lg:w-max  w-full   ">
+                      {/* <h3 className="mb-1 text-xs font-semibold text-gray-500">Subject</h3> */}
+                      {markEntry.subjects.length > 0 ? (
+                        <DrawerSelector
+                          title="Subject"
+                          // ariaLabel="Choose subject"
+                          options={markEntry.subjects.map((subject) => {
+                            const effMax = getEffectiveMaxMarks(classDrawerExam, selectedClass, subject, classDrawerExam?.maxMarks ?? 50);
+                            return {
+                              value: subject.id,
+                              label: `${subject.name} (${effMax})`,
+                            };
+                          })}
+                          value={markEntry.subjectId}
+                          onChange={(subjectId) => {
+                            if (subjectId === markEntry.subjectId) return;
+                            subjectRequestRef.current += 1;
+                            setMarksDirty(false);
+                            setMarkEntry((previous) => ({ ...previous, subjectId, scores: {} }));
+                          }}
+                          disabled={markEntry.loading || markEntry.saving}
+                        />
+                      ) : (
+                        <p className="px-1 py-3 text-sm text-gray-500">{markEntry.loading ? "Loading subjects…" : "No subjects available"}</p>
                       )}
+                    </div>
+                  )}
 
-                      <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                        <div className="px-5 pt-4 pb-4">
-                          {contentTab === "markentry" && (
+
+                  {selectedClass && contentTab === "report" && (
+                    <div className=" lg:w-max  w-full   ">  <DrawerSelector
+
+                      title="Report sections"
+                      options={[
+                        { value: "table", label: "Result Sheet" },
+                        { value: "marklist", label: "Mark Cards" },
+                        { value: "status", label: "Final Status" },
+                        { value: "announcement", label: "Result Announcement" },
+                        { value: "posters", label: "Rank Posters" },
+                      ]}
+                      value={reportTab}
+                      onChange={(value) => { setReportTab(value as ReportTab); setMarklistStudId(null); setPosterStudentId(null); }}
+                    />
+
+                    </div>
+                  )}
+
+                </div>
+
+                {selectedClass ? (
+                  <div className="flex-1 flex flex-col min-h-0">
+
+
+
+
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                      <div className="px-4 pt-2 pb-4">
+                        {contentTab === "markentry" && (
+
+
+                          <div>
+
+
+
                             <MarkEntryGrid
                               exams={classDrawerExam ? [classDrawerExam] : []}
                               classes={selectedClass ? [selectedClass] : []}
@@ -1087,9 +1111,9 @@ export default function AdminExamsPage() {
                               error={markEntry.error}
                               loading={markEntry.loading}
                               activeExam={classDrawerExam}
-                              onExamChange={() => {}}
-                              onClassChange={() => {}}
-                              onSubjectChange={() => {}}
+                              onExamChange={() => { }}
+                              onClassChange={() => { }}
+                              onSubjectChange={() => { }}
                               onScoreChange={(sid, val) => {
                                 setMarksDirty(true);
                                 setMarkEntry((p) => ({
@@ -1109,156 +1133,180 @@ export default function AdminExamsPage() {
                               showActionButtons={false}
                               compactStudentRows
                             />
-                          )}
 
-                          {contentTab === "report" && (
-                            <div className="space-y-4">
-                              {/* Actions */}
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Button type="button"
-                                  onClick={handleCompute}
-                                  disabled={computing}
-                                  className="shadow-none"
-                                >
-                                  {computing
-                                    ? <Loader2 className="size-4 animate-spin" />
-                                    : <RefreshCw className="size-4" />}
-                                  Compute Grades
-                                </Button>
-                                <Button type="button" variant="outline"
-                                  onClick={() => setImportOpen(true)}
-                                  disabled={!reportData || reportLoading}
-                                  className="shadow-none"
-                                >
-                                  <FileSpreadsheet className="size-4" />
-                                  Import Excel
-                                </Button>
-                              </div>
+                          </div>
+                        )}
 
-                              {/* Report content */}
-                              {reportLoading ? (
-                                <><SkeletonGrid count={4} className="mb-4 sm:grid-cols-2" /><TableSkeleton /></>
-                              ) : reportError ? (
-                                <ApiErrorBanner message={reportError} onRetry={() => { void loadClassReport(); }} />
-                              ) : reportData ? (
-                                <div className="space-y-4">
-                                  {reportTab !== "table" && <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
-                                    {[
-                                      { label: "Total students", value: reportData.stats.totalStudents, icon: GraduationCap },
-                                      { label: "Passed", value: reportData.stats.passedCount, icon: CheckCircle2 },
-                                      { label: "Failed", value: reportData.stats.failedCount, icon: AlertCircle },
-                                      { label: "Class average", value: `${reportData.stats.classAverage.toFixed(1)}%`, icon: BarChart2 },
-                                    ].map(({ label, value, icon: Icon }, index) => (
-                                      <div key={label} className={cn("min-w-0 p-2.5 sm:p-3", index % 2 === 0 && "border-r border-gray-100", index < 2 && "border-b border-gray-100")}>
-                                        <div className="flex items-center gap-1.5 text-sm font-medium leading-4 text-gray-700"><Icon aria-hidden="true" className="size-3.5 shrink-0" />{label}</div>
-                                        <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{value}</span>
-                                      </div>
-                                    ))}
-                                  </div>}
+                        {contentTab === "report" && (
+                          <div className="space-y-4">
+                            {/* Actions */}
 
-                                  {/* Report sub-tabs */}
-                                  <ScrollableTabs
-                                    ariaLabel="Report sections"
-                                    options={[
-                                      { value: "table", label: "Result Sheet" },
-                                      { value: "marklist", label: "Mark Cards" },
-                                      { value: "status", label: "Final Status" },
-                                      { value: "posters", label: "Rank Posters" },
-                                    ]}
-                                    value={reportTab}
-                                    onValueChange={(value) => { setReportTab(value as ReportTab); setMarklistStudId(null); setPosterStudentId(null); }}
+                            {/* Report content */}
+                            {reportLoading ? (
+                              <><SkeletonGrid count={4} className="mb-4 sm:grid-cols-2" /><TableSkeleton /></>
+                            ) : reportError ? (
+                              <ApiErrorBanner message={reportError} onRetry={() => { void loadClassReport(); }} />
+                            ) : reportData ? (
+                              <div className="space-y-4">
+
+                                {reportTab === "table" && resultSheetData && (
+                                  <ClassResultTable report={resultSheetData} madrasaName={resultSheetData.clientName ?? ""} teacherView teacherControlsContainer={reportControlsContainer} />
+                                )}
+
+                                {reportTab === "marklist" && (
+                                  <ReportMarklistTab
+                                    report={reportData}
+                                    marklistStudId={marklistStudId}
+                                    setMarklistStudId={setMarklistStudId}
+                                    madrasaName={reportData.clientName ?? ""}
+                                    madrasaLogo={reportData.clientLogo ?? null}
+                                    studentPhotoMap={studentPhotoMap}
                                   />
+                                )}
 
-                                  {/* Tab content */}
-                                  {reportTab === "table" && resultSheetData && (
-                                    <ClassResultTable report={resultSheetData} madrasaName={resultSheetData.clientName ?? ""} teacherView teacherControlsContainer={reportControlsContainer} />
-                                  )}
+                                {reportTab === "status" && (
+                                  <ReportStatusTab
+                                    report={reportData}
+                                    statusMap={statusMap}
+                                    setStatusMap={setStatusMap}
+                                    savingId={savingId}
+                                    savingAll={savingAll}
+                                    onSave={handleSaveStatus}
+                                    onSaveAll={handleSaveAll}
+                                  />
+                                )}
 
-                                  {reportTab === "marklist" && (
-                                    <ReportMarklistTab
-                                      report={reportData}
-                                      marklistStudId={marklistStudId}
-                                      setMarklistStudId={setMarklistStudId}
-                                      madrasaName={reportData.clientName ?? ""}
-                                      madrasaLogo={reportData.clientLogo ?? null}
-                                      studentPhotoMap={studentPhotoMap}
-                                    />
-                                  )}
+                                {reportTab === "announcement" && (
+                                  <ResultAnnouncementSvgPoster
+                                    examName={reportData.exam.name}
+                                    madrasaName={reportData.clientName ?? ""}
+                                    passRate={
+                                      reportData.stats?.totalStudents
+                                        ? Math.round(
+                                            ((reportData.stats.passedCount ?? 0) /
+                                              reportData.stats.totalStudents) * 100,
+                                          )
+                                        : null
+                                    }
+                                    publishedDate={reportData.exam.publishedDate ?? reportData.exam.endDate}
+                                  />
+                                )}
 
-                                  {reportTab === "status" && (
-                                    <ReportStatusTab
-                                      report={reportData}
-                                      statusMap={statusMap}
-                                      setStatusMap={setStatusMap}
-                                      savingId={savingId}
-                                      savingAll={savingAll}
-                                      onSave={handleSaveStatus}
-                                      onSaveAll={handleSaveAll}
-                                    />
-                                  )}
+                                {reportTab === "posters" && (
+                                  <ReportPostersTab
+                                    report={reportData}
+                                    posterStudentId={posterStudentId}
+                                    setPosterStudentId={setPosterStudentId}
+                                    madrasaName={reportData.clientName ?? ""}
+                                    madrasaLogo={reportData.clientLogo ?? null}
+                                    studentPhotoMap={studentPhotoMap}
+                                  />
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
+                                <FileText className="w-8 h-8 opacity-30" />
+                                <p className="text-sm font-semibold">
+                                  No report data loaded
+                                </p>
+                                <p className="text-xs">
+                                  Click "Compute Grades" to generate the report
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
-                                  {reportTab === "posters" && (
-                                    <ReportPostersTab
-                                      report={reportData}
-                                      posterStudentId={posterStudentId}
-                                      setPosterStudentId={setPosterStudentId}
-                                      madrasaName={reportData.clientName ?? ""}
-                                      madrasaLogo={reportData.clientLogo ?? null}
-                                      studentPhotoMap={studentPhotoMap}
-                                    />
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
-                                  <FileText className="w-8 h-8 opacity-30" />
-                                  <p className="text-sm font-semibold">
-                                    No report data loaded
-                                  </p>
-                                  <p className="text-xs">
-                                    Click "Compute Grades" to generate the report
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          )}
+                        {/* Excel Import Modal */}
+                        {importOpen && reportData && (
+                          <ExcelImportModal
+                            clientId={cid}
+                            token={token}
+                            examId={classDrawerExamId ?? ""}
+                            classId={selectedClassTab ?? ""}
+                            accademicYearId={ayId}
+                            subjects={reportData.subjects}
+                            students={reportData.students.map((r) => ({ id: r.student.id, name: r.student.name, adno: r.student.adno }))}
+                            onClose={() => setImportOpen(false)}
+                            onSuccess={async () => {
+                              setImportOpen(false);
+                              await loadClassReport();
+                              if (classDrawerExamId && markEntry.classId && markEntry.subjectId) {
+                                await loadMarkEntrySubject(classDrawerExamId, markEntry.classId, markEntry.subjectId, markEntry.students);
+                              }
+                            }}
+                          />
+                        )}
+                        {selectedClass.classTeacher?.name && (
+                          <p className=" mt-4 mx-2">
+                            Class Teacher:
 
-                          {/* Excel Import Modal */}
-                          {importOpen && reportData && (
-                            <ExcelImportModal
-                              clientId={cid}
-                              token={token}
-                              examId={classDrawerExamId ?? ""}
-                              classId={selectedClassTab ?? ""}
-                              accademicYearId={ayId}
-                              subjects={reportData.subjects}
-                              students={reportData.students.map((r) => ({ id: r.student.id, name: r.student.name, adno: r.student.adno }))}
-                              onClose={() => setImportOpen(false)}
-                              onSuccess={async () => {
-                                setImportOpen(false);
-                                await loadClassReport();
-                                if (classDrawerExamId && markEntry.classId && markEntry.subjectId) {
-                                  await loadMarkEntrySubject(classDrawerExamId, markEntry.classId, markEntry.subjectId, markEntry.students);
-                                }
-                              }}
-                            />
-                          )}
-                        </div>
+                            <span className="text-gray-500 ml-2">
+                              {selectedClass.classTeacher.name}
+
+                            </span>
+                          </p>
+                        )}
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center text-gray-400">
-                      <div className="text-center">
-                        <GraduationCap className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm font-semibold">No classes found</p>
-                      </div>
+
+                  </div>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-gray-400">
+                    <div className="text-center">
+                      <GraduationCap className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm font-semibold">No classes found</p>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
+            </div>
           </>
         )}
       </ResponsivePopover>
 
+
+
+      <ResponsivePopover
+        open={examDrawerOptionsOpen}
+        onOpenChange={e => { setExamDrawerOptionsOpen(e) }}
+
+        children={<div className="">
+          <div aria-label="Exam actions" className="flex flex-col  *:text-left gap-1 *:p-2 *:border-b *:flex *:gap-2 *:items-center *:border-gray-100 *:text-lg *:text-gray-700 *:hover:bg-gray-100 *:hover:text-gray-900">
+            {contentTab === "report" && classDrawerExam?.publishedDate && (
+              <button type="button" className="shadow-none text-left " onClick={() => { void handleUnpublishResults(); }}>
+                <ArchiveX className="size-4" />
+                Unpublish results
+              </button>
+            )}
+            <button type="button" className="shadow-none" onClick={() => { openEditDrawer(classDrawerExam!); }}>
+              <PenSquare className="size-4" />
+              Edit exam</button>
+            <button type="button"
+              onClick={handleCompute}
+              disabled={computing}
+              className="shadow-none"
+            >
+              {computing
+                ? <Loader2 className="size-4 animate-spin" />
+                : <RefreshCw className="size-4" />}
+              Compute Grades
+            </button>
+            <button type="button"
+              onClick={() => setImportOpen(true)}
+              disabled={!reportData || reportLoading}
+              className="shadow-none"
+            >
+              <FileSpreadsheet className="size-4" />
+              Import Excel
+            </button>
+
+            <button type="button" className="shadow-none text-red-500! hover:text-red-700!" onClick={() => { closeClassDrawer(); startDeleteExam(classDrawerExam!); }}>
+              <Trash2 className="size-4" />
+              Delete exam
+            </button>
+          </div>
+        </div>}></ResponsivePopover>
       {/* Create / Edit Exam */}
       <ResponsivePopover
         open={drawerOpen}
@@ -1270,7 +1318,7 @@ export default function AdminExamsPage() {
         side="bottom"
         desktopView="right-drawer"
         title={drawerMode === "create" ? "Create New Exam" : "Edit Exam"}
-         className="mx-auto w-full max-w-xl rounded-t-2xl shadow-none"
+        className="mx-auto w-full max-w-xl rounded-t-2xl shadow-none"
         showCloseButton={!submitting}
         footer={
           <div className="flex justify-end gap-2 border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -1414,7 +1462,7 @@ export default function AdminExamsPage() {
         side="bottom"
         desktopView="right-drawer"
         className="shadow-none"
-        
+
         footer={
           <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4">
             <Button type="button" variant="outline" disabled={deletingId !== null} onClick={() => setShowDeleteExamConfirm(false)} className="flex-1 shadow-none">Cancel</Button>

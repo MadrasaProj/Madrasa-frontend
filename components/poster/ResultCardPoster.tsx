@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Share2, Loader2, Upload, X, FileText, Printer } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import type { ClassReport, ClassReportRow } from "@/lib/results-api";
-import { downloadAsJPG, downloadAsPDF, shareAsPNG, downloadAsPNG, inlineImagesForCapture } from "@/lib/poster-utils";
+import { PosterExportButton } from "@/components/poster/PosterExportButton";
 import {
   generateResultCardHTML,
   type ResultCardParams,
 } from "@/components/poster/resultCardPoster";
-
-type ExportType = "jpg" | "png" | "pdf" | "share";
 
 interface Props {
   row: ClassReportRow;
@@ -28,34 +26,6 @@ const BODY_PADDING = 24; // matches `body { padding: 24px }` in the template
 const DOC_W = PAGE_W + BODY_PADDING * 2;
 const DOC_H = PAGE_H + BODY_PADDING * 2;
 
-/** Wait until the iframe has loaded its fonts/images before rasterising it. */
-async function waitForAssets(doc: Document | null | undefined): Promise<void> {
-  if (!doc) return;
-  const timeout = new Promise<void>((resolve) => setTimeout(resolve, 3000));
-
-  // Font / image loading is best-effort — never block an export forever.
-  try {
-    await Promise.race([doc.fonts?.ready ?? Promise.resolve(), timeout]);
-  } catch {
-    /* ignore font loading failures */
-  }
-
-  const pending = Array.from(doc.images).filter((img) => !img.complete);
-  if (pending.length) {
-    await Promise.race([
-      Promise.all(
-        pending.map(
-          (img) =>
-            new Promise<void>((resolve) => {
-              img.onload = img.onerror = () => resolve();
-            }),
-        ),
-      ),
-      timeout,
-    ]);
-  }
-}
-
 export function ResultCardPoster({ row, report, madrasaName, madrasaLogo, studentPhotoMap }: Props) {
   const { student, summary, marks } = row;
   const { exam, subjects, config, class: cls } = report;
@@ -64,7 +34,6 @@ export function ResultCardPoster({ row, report, madrasaName, madrasaLogo, studen
   const iframeRef  = useRef<HTMLIFrameElement>(null);
   const [scale, setScale]     = useState(1);
   const [photoState, setPhotoState] = useState<{ id: string; url: string | null } | null>(null);
-  const [exporting, setExporting]   = useState<ExportType | null>(null);
 
   const photo = photoState?.id === student.id
     ? photoState.url
@@ -148,29 +117,6 @@ export function ResultCardPoster({ row, report, madrasaName, madrasaLogo, studen
   const html = useMemo(() => generateResultCardHTML(params), [params]);
   const stem = `${madrasaName}-${student.name}-${exam.name}`.replace(/\s+/g, "-");
 
-  const run = async (type: ExportType) => {
-    const doc = iframeRef.current?.contentDocument;
-    const el = doc?.querySelector<HTMLElement>(".a4-page");
-    if (!el) return;
-    setExporting(type);
-    try {
-      await waitForAssets(doc);
-      if (doc) await inlineImagesForCapture(doc);
-      if (type === "jpg")   await downloadAsJPG(el, stem);
-      if (type === "png")   await downloadAsPNG(el, stem);
-      if (type === "pdf")   await downloadAsPDF(el, stem, "a4");
-      if (type === "share") await shareAsPNG(
-        el, `${stem}.png`,
-        `Result · ${student.name}`,
-        `${student.name} · ${exam.name} · ${madrasaName}`,
-      );
-    } catch (err) {
-      console.error("Result card export failed", err);
-    } finally {
-      setExporting(null);
-    }
-  };
-
   const btn =
     "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors";
 
@@ -178,39 +124,24 @@ export function ResultCardPoster({ row, report, madrasaName, madrasaLogo, studen
     <div className="space-y-3">
       {/* ── Toolbar ── */}
       <div className="flex items-center gap-2 flex-wrap">
-        <label className={btn + " cursor-pointer"}>
+        {/* <label className={btn + " cursor-pointer"}>
           <Upload className="w-4 h-4" />
           {photo ? "Change Photo" : "Upload Photo"}
           <input type="file" accept="image/*" className="sr-only" onChange={handlePhoto} />
-        </label>
-        {photo && (
+        </label> */}
+        {/* {photo && (
           <button onClick={() => setPhoto(null)}
             className="p-1.5 rounded-lg border border-gray-200 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
             title="Remove uploaded photo">
             <X className="w-4 h-4" />
           </button>
-        )}
-        <button onClick={() => run("jpg")} disabled={!!exporting} className={btn}>
-          {exporting === "jpg" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          JPG
-        </button>
-        <button onClick={() => run("png")} disabled={!!exporting} className={btn}>
-          {exporting === "png" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          PNG
-        </button>
-        <button onClick={() => run("pdf")} disabled={!!exporting} className={btn}>
-          {exporting === "pdf" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-          PDF
-        </button>
-        <button onClick={() => iframeRef.current?.contentWindow?.print()} disabled={!!exporting} className={btn}>
-          <Printer className="w-4 h-4" />
-          Print
-        </button>
-        <button onClick={() => run("share")} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-primary-600 hover:bg-primary-700 text-white disabled:opacity-50 transition-colors">
-          {exporting === "share" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
-          Share
-        </button>
+        )} */}
+        <PosterExportButton
+          getElement={() => iframeRef.current?.contentDocument?.querySelector<HTMLElement>(".a4-page") ?? null}
+          stem={stem}
+          shareTitle={`Result · ${student.name}`}
+          shareText={`${student.name} · ${exam.name} · ${madrasaName}`}
+        />
       </div>
 
       {/* ── A4 result card (rendered from resultCardPoster.ts) ── */}

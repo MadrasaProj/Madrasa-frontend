@@ -87,9 +87,10 @@ export function generateResultCardHTML(data: ResultCardParams): string {
 
   const totalMarks = summary.totalMarks ?? calcTotalMarks;
   const totalMaxMarks = summary.totalMaxMarks ?? calcTotalMax;
-  const percentage =
+  const percentage = Math.round(
     summary.percentage ??
-    (totalMaxMarks > 0 ? Math.round((totalMarks / totalMaxMarks) * 100) : 0);
+      (totalMaxMarks > 0 ? (totalMarks / totalMaxMarks) * 100 : 0),
+  );
 
   const allSubjectsPassed = subjects.every((s) => s.passed !== false);
   const isPassed = summary.passed ?? allSubjectsPassed;
@@ -663,7 +664,7 @@ export function generateResultCardHTML(data: ResultCardParams): string {
 
         <div class="radial-progress" style="--pct: ${percentage};" role="progressbar" aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100">
           <div class="radial-center">
-            <span class="radial-value">${percentage}%</span>
+            <span class="radial-value">${percentage}</span>
           </div>
         </div>
       </div>

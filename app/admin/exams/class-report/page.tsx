@@ -4,9 +4,8 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ClassResultTable } from "@/components/exam/ClassResultTable";
-import { RankPoster } from "@/components/exam/RankPoster";
 import { ResultCardPoster } from "@/components/poster/ResultCardPoster";
-import { ResultAnnouncementPoster } from "@/components/exam/ResultAnnouncementPoster";
+import { getTopRankers, RankIndividualSvgPoster, RankSvgPoster, ResultAnnouncementSvgPoster } from "@/components/poster/SvgPoster";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 import {
  getClassReport, computeSummary, setFinalStatus,
@@ -24,7 +23,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 
-type Tab = "table" | "marklist" | "status" | "posters";
+type Tab = "table" | "marklist" | "status" | "announcement" | "posters";
 
 const TOTAL_GRADE_OPTIONS: { value: TotalGrade; label: string }[] = [
  { value: "DISTINCTION", label: "Distinction" },
@@ -195,8 +194,8 @@ export default function ClassReportPage() {
  if (!report) return null;
 
  const { exam, class: cls, subjects, stats } = report;
- const rankedStudents = report.students.filter((r) => r.summary.rank !== null && r.summary.rank <= 3);
- const posterRow = posterStudentId ? report.students.find((r) => r.student.id === posterStudentId) : null;
+ const rankedStudents = getTopRankers(report.students);
+ const posterRow = posterStudentId ? rankedStudents.find((r) => r.student.id === posterStudentId) : null;
  const madrasaName = report.clientName ?? "Al Madrasa";
  const madrasaLogo = report.clientLogo ?? null;
  const studentPhotoMap = Object.fromEntries(students.map((s) => [s.id, s.photoUrl ?? null]));
@@ -255,6 +254,7 @@ export default function ClassReportPage() {
  { key: "table", label: "Result Sheet" },
  { key: "marklist", label: "Mark Cards" },
  { key: "status", label: "Final Status" },
+ { key: "announcement", label: "Result Announcement" },
  { key: "posters", label: "Rank Posters" },
  ] as { key: Tab; label: string }[]).map(({ key, label }) => (
  <button key={key} onClick={() => setTab(key)}
@@ -294,6 +294,19 @@ export default function ClassReportPage() {
  savingAll={savingAll}
  onSave={handleSaveStatus}
  onSaveAll={handleSaveAll}
+ />
+ )}
+
+ {tab === "announcement" && (
+ <ResultAnnouncementSvgPoster
+ examName={report.exam.name}
+ madrasaName={madrasaName}
+ passRate={
+ report.stats?.totalStudents
+ ? Math.round(((report.stats.passedCount ?? 0) / report.stats.totalStudents) * 100)
+ : null
+ }
+ publishedDate={report.exam.publishedDate ?? report.exam.endDate}
  />
  )}
 
@@ -503,31 +516,8 @@ function PostersTab({ rankedStudents, report, posterStudentId, setPosterStudentI
  madrasaLogo?: string | null;
  studentPhotoMap?: Record<string, string | null>;
 }) {
- const totalStudents = report.stats?.totalStudents ?? report.students.length;
- const passCount = report.stats?.passedCount ?? undefined;
-
  return (
  <div className="space-y-8">
-
- {/* ── Announcement poster ── */}
- <div>
- <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
- <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
- Result Announcement Poster
- </h3>
- <div className="max-w-sm mx-auto">
- <ResultAnnouncementPoster
- exam={report.exam}
- madrasaName={madrasaName}
- madrasaLogo={madrasaLogo}
- stats={{
- totalStudents,
- passCount: passCount > 0 ? passCount : undefined,
- className: report.class.name,
- }}
- />
- </div>
- </div>
 
  {/* ── Rank posters ── */}
  {rankedStudents.length > 0 && (
@@ -536,6 +526,17 @@ function PostersTab({ rankedStudents, report, posterStudentId, setPosterStudentI
  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
  Rank Posters
  </h3>
+ <RankSvgPoster
+ examName={report.exam.name}
+ madrasaName={madrasaName}
+ classNameLabel={report.class.name}
+ toppers={rankedStudents.map((row) => ({
+ rank: row.summary.rank ?? 0,
+ name: row.student.name,
+ percentage: row.summary.totalPercentage,
+ avatarUrl: studentPhotoMap?.[row.student.id] ?? null,
+ }))}
+ />
  {/* Selector */}
  <div className="flex gap-2 flex-wrap mb-4">
  {rankedStudents.map((r) => (
@@ -560,7 +561,17 @@ function PostersTab({ rankedStudents, report, posterStudentId, setPosterStudentI
  animate={{ opacity: 1, y: 0 }}
  className="max-w-sm mx-auto"
  >
- <RankPoster row={posterRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} studentPhotoMap={studentPhotoMap} />
+ <RankIndividualSvgPoster
+ examName={report.exam.name}
+ madrasaName={madrasaName}
+ classNameLabel={report.class.name}
+ topper={{
+ rank: posterRow.summary.rank ?? 0,
+ name: posterRow.student.name,
+ percentage: posterRow.summary.totalPercentage,
+ avatarUrl: studentPhotoMap?.[posterRow.student.id] ?? null,
+ }}
+ />
  </motion.div>
  )}
  </div>
