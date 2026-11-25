@@ -11,6 +11,7 @@ import {
   createClient,
   listEducationSystems,
   listSuperAdminUsers,
+  listAssignableUsers,
   assignClient,
   type ClientListItem,
   type ClientPayment,
@@ -19,6 +20,7 @@ import {
   type UpdateClientDto,
   type EducationSystemInfo,
   type SuperAdminUser,
+  type AssignableUser,
 } from "@/lib/super-admin-api";
 import {
   getAllClasses,
@@ -114,7 +116,7 @@ function EditMadrasaDrawer({
     assigneeId: client.assigneeId ?? null,
   });
   const [saving, setSaving] = useState(false);
-  const [superUsers, setSuperUsers] = useState<SuperAdminUser[]>([]);
+  const [superUsers, setSuperUsers] = useState<AssignableUser[]>([]);
   const [editDivisions, setEditDivisions] = useState<Record<string, string[]>>({});
   const [existingClasses, setExistingClasses] = useState<ClassRecord[]>([]);
   const [classesLoading, setClassesLoading] = useState(true);
@@ -122,7 +124,7 @@ function EditMadrasaDrawer({
 
   useEffect(() => {
     let cancelled = false;
-    listSuperAdminUsers(token)
+    listAssignableUsers(token)
       .then((res) => {
         if (!cancelled) setSuperUsers(res.data || []);
       })
@@ -159,6 +161,14 @@ function EditMadrasaDrawer({
   const set = (k: string, v: any) =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const handleSave = async () => {
     if (!form.name?.trim()) {
       toast.error("Name is required.");
@@ -184,6 +194,7 @@ function EditMadrasaDrawer({
         password: form.password?.trim() || undefined,
         committieUsername: form.committieUsername?.trim() || undefined,
         committiePassword: form.committiePassword?.trim() || undefined,
+        assigneeId: form.assigneeId || null,
         gradeLevelIds: gradeLevelIds.length > 0 ? gradeLevelIds : undefined,
         divisions: Object.keys(divisions).length > 0 ? divisions : undefined,
       };
@@ -298,7 +309,7 @@ function EditMadrasaDrawer({
               <option value="">-- No Assignee (Unassigned) --</option>
               {superUsers.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.name} ({u.role?.replace(/_/g, " ")}) - {u.identifier}
+                  {u.name} ({u.role?.replace(/_/g, " ")}) - {u.identifier} {u.clientName ? `[${u.clientName}]` : ""}
                 </option>
               ))}
             </select>
@@ -855,10 +866,10 @@ function NewMadrasaDrawer({
   const [eduSystems, setEduSystems] = useState<EducationSystemInfo[]>([]);
   const [systemsLoading, setSystemsLoading] = useState(true);
   const [selectedSystem, setSelectedSystem] = useState<EducationSystemInfo | null>(null);
-  const [superUsers, setSuperUsers] = useState<SuperAdminUser[]>([]);
+  const [superUsers, setSuperUsers] = useState<AssignableUser[]>([]);
 
   useEffect(() => {
-    listSuperAdminUsers(token)
+    listAssignableUsers(token)
       .then((res) => setSuperUsers(res.data || []))
       .catch(() => {});
   }, [token]);
@@ -896,10 +907,6 @@ function NewMadrasaDrawer({
       toast.error("Please fill in all required fields.");
       return;
     }
-    if (!form.assigneeId) {
-      toast.error("Please select an assignee. Assignee is required for madrasa ownership.");
-      return;
-    }
     setSaving(true);
     try {
       const gradeLevelIds = Object.keys(glDivisions)
@@ -910,12 +917,17 @@ function NewMadrasaDrawer({
       }
       const payload = {
         ...form,
+        assigneeId: form.assigneeId?.trim() || undefined,
         educationSystemId: selectedSystem?.id,
         gradeLevelIds: gradeLevelIds.length > 0 ? gradeLevelIds : undefined,
         divisions: Object.keys(divisions).length > 0 ? divisions : undefined,
       };
       const created = await createClient(payload, token);
-      toast.success("Madrasa created successfully");
+      if (!form.assigneeId) {
+        toast.warning("Madrasa created. Note: Assignee is required for account usage monitoring.");
+      } else {
+        toast.success("Madrasa created successfully with assignee.");
+      }
       onCreated(created);
       onClose();
     } catch (e: unknown) {
@@ -1137,17 +1149,17 @@ function NewMadrasaDrawer({
             </p>
             <div>
               <label className={labelCls}>
-                Assigned Team Member <span className="text-red-500">* (Required)</span>
+                Assigned Team Member <span className="text-amber-600 font-normal">(Default: Unassigned · Assignee required for usage tracking)</span>
               </label>
               <select
                 value={form.assigneeId || ""}
                 onChange={(e) => set("assigneeId", e.target.value)}
                 className={inputCls}
               >
-                <option value="">-- Select Assignee (Required) --</option>
+                <option value="">-- No Assignee (Default: Unassigned) --</option>
                 {superUsers.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.name} ({u.role?.replace(/_/g, " ")}) - {u.identifier}
+                    {u.name} ({u.role?.replace(/_/g, " ")}) - {u.identifier} {u.clientName ? `[${u.clientName}]` : ""}
                   </option>
                 ))}
               </select>
@@ -1256,6 +1268,174 @@ function NewMadrasaDrawer({
   );
 }
 
+// ── Assign Madrasa Modal ─────────────────────────────────────────────────────────
+
+function AssignMadrasaModal({
+  client,
+  users,
+  token,
+  onClose,
+  onUpdated,
+}: {
+  client: ClientListItem;
+  users: AssignableUser[];
+  token: string;
+  onClose: () => void;
+  onUpdated: (updatedClient: ClientListItem) => void;
+}) {
+  const [selectedUser, setSelectedUser] = useState<string>(client.assigneeId || "");
+  const [userSearch, setUserSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const filteredUsers = useMemo(() => {
+    if (!userSearch.trim()) return users;
+    const q = userSearch.toLowerCase();
+    return users.filter(
+      (u) =>
+        u.name.toLowerCase().includes(q) ||
+        u.identifier.toLowerCase().includes(q) ||
+        (u.role && u.role.toLowerCase().includes(q)) ||
+        (u.clientName && u.clientName.toLowerCase().includes(q))
+    );
+  }, [users, userSearch]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const updated = await assignClient(client.id, selectedUser || null, token);
+      const merged: ClientListItem = {
+        ...client,
+        assigneeId: updated.assigneeId,
+        assignee: updated.assignee,
+      };
+      toast.success(
+        selectedUser
+          ? `Madrasa assigned to ${users.find((u) => u.id === selectedUser)?.name || "user"}`
+          : "Madrasa marked as unassigned"
+      );
+      onUpdated(merged);
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to update assignee");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+          <div>
+            <h3 className="font-semibold text-gray-900 text-base">Assign Madrasa Ownership</h3>
+            <p className="text-xs text-gray-500 mt-0.5">{client.name} {client.city ? `• ${client.city}` : ""}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="py-4 space-y-3">
+          <p className="text-xs text-gray-600 leading-relaxed">
+            Select an account manager from available users. Each madrasa requires an assignee to track ibadah scoring, attendance health, and student engagement.
+          </p>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-700 block mb-1.5">
+              Assigned Team Member <span className="text-red-500">* (Required)</span>
+            </label>
+
+            {users.length > 6 && (
+              <div className="relative mb-2">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Filter users by name or role..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+            )}
+
+            <select
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+              className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+            >
+              <option value="">-- No Assignee (Unassigned) --</option>
+              {filteredUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.role?.replace(/_/g, " ")}) - {u.identifier} {u.clientName ? `[${u.clientName}]` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {!selectedUser && (
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2 text-xs text-amber-800">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <span>
+                <strong>Required:</strong> Madrasas should have an assignee from available users for operational telemetry and accountability.
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+          {client.assigneeId ? (
+            <button
+              type="button"
+              onClick={() => setSelectedUser("")}
+              disabled={saving || !selectedUser}
+              className="text-xs text-red-600 hover:text-red-700 font-medium cursor-pointer"
+            >
+              Clear Assignment
+            </button>
+          ) : <div />}
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-800 rounded-xl border border-gray-200 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 text-xs font-semibold bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-sm disabled:opacity-60 flex items-center gap-1.5 cursor-pointer"
+            >
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              Save Assignment
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function AdminMadrasasPage() {
@@ -1270,6 +1450,8 @@ export default function AdminMadrasasPage() {
   );
   const [sharingClient, setSharingClient] = useState<ClientListItem | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [assigningClient, setAssigningClient] = useState<ClientListItem | null>(null);
+  const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
 
   // Search & Filter states
   const [search, setSearch] = useState("");
@@ -1285,6 +1467,10 @@ export default function AdminMadrasasPage() {
       .then((r) => setClients(r.data))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    listAssignableUsers(accessToken)
+      .then((r) => setAssignableUsers(r.data || []))
+      .catch(() => {});
   }, [accessToken]);
 
   const handleEnterClient = (clientId: string, slug: string) => {
@@ -1295,6 +1481,13 @@ export default function AdminMadrasasPage() {
 
   const handleSaved = (updated: ClientListItem) => {
     setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+  };
+
+  const handleAssignUpdated = (updated: ClientListItem) => {
+    setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    if (editingClient?.id === updated.id) {
+      setEditingClient(updated);
+    }
   };
 
   // Filtered clients based on search & status filter
@@ -1478,15 +1671,33 @@ export default function AdminMadrasasPage() {
                       </div>
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         {client.assignee ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAssigningClient(client);
+                            }}
+                            className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 cursor-pointer transition-colors"
+                            title="Click to reassign account manager"
+                          >
                             <UserCheck className="w-3 h-3 text-indigo-500" />
-                            Assignee: {client.assignee.name}
-                          </span>
+                            <span>Assignee: {client.assignee.name}</span>
+                            <span className="text-[10px] text-indigo-500 underline ml-0.5">Change</span>
+                          </button>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200">
-                            <AlertCircle className="w-3 h-3 text-amber-600" />
-                            Unassigned (Required)
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAssigningClient(client);
+                            }}
+                            className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 cursor-pointer transition-colors"
+                            title="Assign account manager now"
+                          >
+                            <AlertCircle className="w-3 h-3 text-amber-600 animate-pulse" />
+                            <span>Unassigned <span className="text-red-500">* (Required)</span></span>
+                            <span className="text-[10px] text-amber-700 underline font-semibold ml-0.5">Assign now</span>
+                          </button>
                         )}
                         <button
                           onClick={() => navigate(`/admin/usage-health?search=${encodeURIComponent(client.name)}`)}
@@ -1498,6 +1709,13 @@ export default function AdminMadrasasPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => setAssigningClient(client)}
+                        className="p-1.5 rounded-xl text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-all cursor-pointer"
+                        title="Assign / Reassign account manager"
+                      >
+                        <UserCheck className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => setSharingClient(client)}
                         className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-primary-600 transition-all cursor-pointer"
@@ -1650,6 +1868,17 @@ export default function AdminMadrasasPage() {
         onClose={() => setSharingClient(null)}
         client={sharingClient}
       />
+
+      {/* Quick Assign Modal */}
+      {assigningClient && (
+        <AssignMadrasaModal
+          client={assigningClient}
+          users={assignableUsers}
+          token={accessToken!}
+          onClose={() => setAssigningClient(null)}
+          onUpdated={handleAssignUpdated}
+        />
+      )}
     </DashboardLayout>
   );
 }

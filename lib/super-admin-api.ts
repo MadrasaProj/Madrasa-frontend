@@ -158,6 +158,20 @@ export interface SuperAdminUser {
   createdAt: string;
 }
 
+export interface AssignableUser {
+  id: string;
+  name: string;
+  identifier: string;
+  role: string;
+  isPrimary?: boolean;
+  clientName?: string | null;
+}
+
+export function listAssignableUsers(token: string, search?: string) {
+  const q = search ? `?search=${encodeURIComponent(search)}` : "";
+  return getJson<{ data: AssignableUser[]; total: number }>(`/super-admin/assignable-users${q}`, token);
+}
+
 export function listSuperAdminUsers(token: string) {
   return getJson<{ data: SuperAdminUser[]; total: number }>("/super-admin/users", token);
 }

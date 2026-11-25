@@ -1143,9 +1143,9 @@ export default function LeadsCrmPage() {
         {/* ── Split Layout: Master List & Detail Panel (Zero Nested Scroll Traps) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* Left Column: Lead List Cards */}
-          <div className="w-full lg:col-span-5 xl:col-span-4 2xl:col-span-4 relative flex flex-col bg-white border border-gray-200/90 rounded-2xl sm:rounded-3xl shadow-2xs overflow-hidden">
+          <div className="w-full lg:col-span-5 xl:col-span-4 2xl:col-span-4 relative flex flex-col bg-white border border-gray-200/90 rounded-2xl sm:rounded-3xl shadow-2xs">
             {/* Header: Select All & Counts */}
-            <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-gray-100 bg-gray-50/70 flex items-center justify-between shrink-0">
+            <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-gray-100 bg-gray-50/70 rounded-t-2xl sm:rounded-t-3xl flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -1237,7 +1237,7 @@ export default function LeadsCrmPage() {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="p-3 border-t border-gray-100 bg-white flex items-center justify-between shrink-0 text-xs">
+              <div className="p-3 border-t border-gray-100 bg-white rounded-b-2xl sm:rounded-b-3xl flex items-center justify-between shrink-0 text-xs">
                 <span className="text-gray-500 font-medium">
                   Page <strong className="text-gray-800">{currentPage}</strong>{" "}
                   of {totalPages}
@@ -1267,7 +1267,7 @@ export default function LeadsCrmPage() {
           {/* Right Column: Desktop Detail View (Clean Sticky Panel, Zero Double Scroll Traps) */}
           <div
             className={cn(
-              "hidden lg:flex lg:col-span-7 xl:col-span-8 2xl:col-span-8 relative flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
+              "hidden lg:flex lg:col-span-7 xl:col-span-8 2xl:col-span-8 relative flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs",
               "lg:sticky lg:top-6",
             )}
           >

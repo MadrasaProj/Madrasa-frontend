@@ -3,11 +3,11 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   getUsageHealth,
-  listSuperAdminUsers,
+  listAssignableUsers,
   assignClient,
   type UsageHealthClientItem,
   type UsageHealthResponse,
-  type SuperAdminUser,
+  type AssignableUser,
 } from "@/lib/super-admin-api";
 import { useAuthStore } from "@/store/auth";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -105,13 +105,34 @@ function AssignModal({
   onUpdated,
 }: {
   client: UsageHealthClientItem;
-  users: SuperAdminUser[];
+  users: AssignableUser[];
   token: string;
   onClose: () => void;
   onUpdated: (updatedId: string, newAssigneeId: string | null) => void;
 }) {
   const [selectedUser, setSelectedUser] = useState<string>(client.assigneeId || "");
+  const [userSearch, setUserSearch] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const filteredUsers = useMemo(() => {
+    if (!userSearch.trim()) return users;
+    const q = userSearch.toLowerCase();
+    return users.filter(
+      (u) =>
+        u.name.toLowerCase().includes(q) ||
+        u.identifier.toLowerCase().includes(q) ||
+        (u.role && u.role.toLowerCase().includes(q)) ||
+        (u.clientName && u.clientName.toLowerCase().includes(q))
+    );
+  }, [users, userSearch]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -132,8 +153,14 @@ function AssignModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100">
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between pb-4 border-b border-gray-100">
           <div>
             <h3 className="font-semibold text-gray-900 text-base">Assign Madrasa Ownership</h3>
@@ -141,7 +168,7 @@ function AssignModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -157,15 +184,29 @@ function AssignModal({
             <label className="text-xs font-semibold text-gray-700 block mb-1.5">
               Assigned Team Member <span className="text-red-500">* (Required)</span>
             </label>
+
+            {users.length > 6 && (
+              <div className="relative mb-2">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Filter users by name or role..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+            )}
+
             <select
               value={selectedUser}
               onChange={(e) => setSelectedUser(e.target.value)}
               className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
             >
               <option value="">-- No Assignee (Unassigned) --</option>
-              {users.map((u) => (
+              {filteredUsers.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.name} ({u.role?.replace(/_/g, " ")}) - {u.identifier}
+                  {u.name} ({u.role?.replace(/_/g, " ")}) - {u.identifier} {u.clientName ? `[${u.clientName}]` : ""}
                 </option>
               ))}
             </select>
@@ -181,22 +222,36 @@ function AssignModal({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-4 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={handleSave}
-            className="px-4 py-2 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-xl shadow-sm transition-all disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save Assignment"}
-          </button>
+        <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+          {client.assigneeId ? (
+            <button
+              type="button"
+              onClick={() => setSelectedUser("")}
+              disabled={saving || !selectedUser}
+              className="text-xs text-red-600 hover:text-red-700 font-medium cursor-pointer"
+            >
+              Clear Assignment
+            </button>
+          ) : <div />}
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={handleSave}
+              className="px-4 py-2 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-xl shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+            >
+              {saving ? "Saving..." : "Save Assignment"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -213,13 +268,21 @@ function DetailDrawer({
   onOpenAssign,
 }: {
   client: UsageHealthClientItem;
-  users: SuperAdminUser[];
+  users: AssignableUser[];
   token: string;
   onClose: () => void;
   onOpenAssign: () => void;
 }) {
   const navigate = useNavigate();
   const tierBadge = getTierBadge(client.scoring.healthTier);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   return (
     <>
@@ -520,18 +583,18 @@ export default function AdminUsageHealthPage() {
   // Data State
   const [loading, setLoading] = useState<boolean>(true);
   const [data, setData] = useState<UsageHealthResponse | null>(null);
-  const [superUsers, setSuperUsers] = useState<SuperAdminUser[]>([]);
+  const [superUsers, setSuperUsers] = useState<AssignableUser[]>([]);
 
   // Modals & Drawers
   const [selectedClientForAssign, setSelectedClientForAssign] = useState<UsageHealthClientItem | null>(null);
   const [selectedClientForDrawer, setSelectedClientForDrawer] = useState<UsageHealthClientItem | null>(null);
 
-  // Load super admin users once
+  // Load assignable users once
   useEffect(() => {
     if (!accessToken) return;
-    listSuperAdminUsers(accessToken)
+    listAssignableUsers(accessToken)
       .then((res) => setSuperUsers(res.data || []))
-      .catch((err) => console.error("Failed to load super admin users", err));
+      .catch((err) => console.error("Failed to load assignable users", err));
   }, [accessToken]);
 
   // Load Usage Health data
@@ -578,9 +641,9 @@ export default function AdminUsageHealthPage() {
 
   // Handle assignment update
   const handleAssignmentUpdated = (clientId: string, newAssigneeId: string | null) => {
+    const assignedUser = superUsers.find((u) => u.id === newAssigneeId) || null;
     setData((prev) => {
       if (!prev) return prev;
-      const assignedUser = superUsers.find((u) => u.id === newAssigneeId) || null;
       return {
         ...prev,
         data: prev.data.map((c): UsageHealthClientItem =>
@@ -596,10 +659,17 @@ export default function AdminUsageHealthPage() {
         ),
       };
     });
-    // If filtered to 'me' or 'unassigned', reload to reflect moving between buckets
-    if (assigneeFilter === "me" || assigneeFilter === "unassigned") {
-      loadData();
-    }
+    setSelectedClientForDrawer((prev) => {
+      if (!prev || prev.id !== clientId) return prev;
+      return {
+        ...prev,
+        assigneeId: newAssigneeId,
+        assignee: assignedUser
+          ? { id: assignedUser.id, name: assignedUser.name, username: assignedUser.identifier, role: assignedUser.role || "" }
+          : null,
+      };
+    });
+    loadData();
   };
 
   const summary = data?.summary;
@@ -835,7 +905,7 @@ export default function AdminUsageHealthPage() {
                 <option value="">Filter by Team Member...</option>
                 {superUsers.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.name} ({u.role?.replace(/_/g, " ")})
+                    {u.name} ({u.role?.replace(/_/g, " ")}) {u.clientName ? `[${u.clientName}]` : ""}
                   </option>
                 ))}
               </select>

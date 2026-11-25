@@ -224,7 +224,7 @@ export const LeadToolbar: React.FC<LeadToolbarProps> = ({
       </div>
 
       {/* ── Row 3: Horizontal Filter Chips Strip (Consistent Sizing, Zero Native OS Styling Quirks) ── */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-0.5 px-0.5 select-none">
+      <div className="flex items-center gap-1.5 overflow-x-auto sm:overflow-visible no-scrollbar py-0.5 -mx-0.5 px-0.5 select-none">
         {/* Stage Filter Dropdown */}
         <CrmChipDropdown
           label={
