@@ -24,6 +24,7 @@ import {
   MapPin,
   UserCheck,
   UserX,
+  UserPlus,
 } from "lucide-react";
 import {
   LEAD_STATUSES,
@@ -98,12 +99,6 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({
   const [editTimelineType, setEditTimelineType] = useState("CALL");
   const [editTimelineFollowUp, setEditTimelineFollowUp] = useState("");
   const [timelineUpdating, setTimelineUpdating] = useState(false);
-
-  // Follow-up Date Quick Popover
-  const [showFollowUpPicker, setShowFollowUpPicker] = useState(false);
-  const [quickFollowUpDate, setQuickFollowUpDate] = useState(
-    lead.nextFollowUpDate ? lead.nextFollowUpDate.split("T")[0] : ""
-  );
 
   // Convert Modal State
   const [showConvertModal, setShowConvertModal] = useState(false);
@@ -185,301 +180,184 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({
   };
 
   return (
-    <div className="space-y-3.5 pb-4">
-      {/* ── 1. Compact Header: Name, Stage & Contact Shortcuts ── */}
-      <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/90 shadow-2xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm sm:text-lg font-bold text-gray-900 tracking-tight truncate">
-                {lead.name}
-              </h2>
-              <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md shrink-0">
-                {lead.type || "Madrasa"}
-              </span>
-              {lead.score && (
-                <span
-                  className={cn(
-                    "text-xs font-bold px-2 py-0.5 rounded-md border uppercase tracking-wider shrink-0",
-                    SCORE_COLORS[lead.score] || "bg-gray-100 text-gray-700 border-gray-200"
-                  )}
-                >
-                  {lead.score}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5 flex-wrap">
-              <span className="flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                {lead.place || "Place"}{lead.district ? `, ${lead.district}` : ""}
-              </span>
-              {lead.studentCount ? (
-                <span className="flex items-center gap-1">
-                  <span className="text-gray-300 mx-0.5">•</span>
-                  <Users className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                  {lead.studentCount} students
-                </span>
-              ) : null}
-            </div>
-          </div>
+    <div className="space-y-3 pb-4">
+      {/* ── 1. Single Simple Header Line: Name, Contact & Quick Actions ── */}
+      <div className="bg-white rounded-xl p-2.5 sm:p-3 border border-gray-200/90 shadow-2xs flex items-center justify-between gap-2 select-none flex-wrap sm:flex-nowrap">
+        {/* Left: Lead Name, Place, Contact & Score in a single clean line */}
+        <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
+          <h2 className="text-sm sm:text-base font-bold text-gray-900 truncate">
+            {lead.name}
+          </h2>
 
-          {/* Quick Stage Selector & Direct Contact Actions */}
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            {/* Quick Stage Dropdown */}
-            <CrmChipDropdown
-              label={LEAD_STATUS_LABELS[lead.status as LeadStatus] ?? lead.status}
-              value={lead.status}
-              icon={React.createElement(STAGE_LUCIDE_ICONS[lead.status as LeadStatus] || Sparkles, {
-                className: "w-3.5 h-3.5 shrink-0 opacity-80",
-              })}
-              options={LEAD_STATUSES.map((st, idx) => ({
-                value: st,
-                label: `${idx + 1}. ${LEAD_STATUS_LABELS[st] ?? st}`,
-              }))}
-              onChange={(st) => onUpdateStage(st, lead.id)}
-              isActive={true}
-              activeClassName={cn(
-                "min-h-[34px] sm:min-h-[36px] px-3 py-1 rounded-xl border text-xs sm:text-sm font-semibold shadow-2xs",
-                STATUS_COLORS[lead.status as LeadStatus] || "bg-gray-100 text-gray-700 border-gray-200"
-              )}
-              minWidth="min-w-[210px]"
-            />
-
-            {primaryContact?.phone && (
-              <>
-                <a
-                  href={`tel:${cleanPrimaryPhone}`}
-                  className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 font-semibold text-xs sm:text-sm flex items-center gap-1.5 border border-gray-200 transition-all active:scale-95"
-                  title={`Call ${primaryContact.phone}`}
-                >
-                  <Phone className="w-3.5 h-3.5 text-gray-600" />
-                  <span>Call</span>
-                </a>
-                <a
-                  href={`https://wa.me/${waPrimaryPhone}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs sm:text-sm flex items-center gap-1.5 border border-emerald-200 transition-all active:scale-95"
-                  title="WhatsApp"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>WhatsApp</span>
-                </a>
-              </>
-            )}
-
-            <button
-              type="button"
-              onClick={() => onStartEdit(lead)}
-              className="min-h-[38px] px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-all flex items-center gap-1.5 active:scale-95"
-              title="Edit Lead Profile"
-            >
-              <Pencil className="w-3.5 h-3.5 text-gray-500" />
-              <span>Edit</span>
-            </button>
-          </div>
-        </div>
-
-        {/* ── 2. Compact Essentials Strip: Contact, Follow-up & Assignee ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-gray-100">
-          {/* Contact Person */}
-          <div className="p-2.5 rounded-xl bg-gray-50/70 border border-gray-200/60 flex items-center justify-between gap-2 min-w-0">
-            <div className="min-w-0 flex-1">
-              <span className="text-xs uppercase font-bold text-gray-500 block truncate">
-                Contact: {primaryContact?.role || "Primary"}
-              </span>
-              <span className="font-bold text-gray-900 truncate block text-sm mt-0.5">
-                {primaryContact?.name || "No name recorded"}
-              </span>
-              {primaryContact?.phone ? (
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span className="font-mono text-xs sm:text-sm text-gray-600 truncate">{primaryContact.phone}</span>
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(primaryContact.phone!, primaryContact.phone!)}
-                    className="text-gray-400 hover:text-gray-600 p-1 min-h-[30px] min-w-[30px] flex items-center justify-center"
-                    title="Copy phone"
-                  >
-                    {copiedText === primaryContact.phone ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-
-          {/* Follow-up Schedule */}
-          <div className="p-2.5 rounded-xl bg-gray-50/70 border border-gray-200/60 flex items-center justify-between gap-2 min-w-0">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase font-bold text-gray-500">Next Follow-up</span>
-                <button
-                  type="button"
-                  onClick={() => setShowFollowUpPicker(!showFollowUpPicker)}
-                  className="text-xs font-bold text-primary-600 hover:underline min-h-[28px] px-1 flex items-center"
-                >
-                  {lead.nextFollowUpDate ? "Change" : "+ Set"}
-                </button>
-              </div>
-              <div className="mt-1">
-                <span className={cn("text-xs sm:text-sm font-semibold inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md", followUpStatus.badgeClass)}>
-                  <span className="truncate">{followUpStatus.label}</span>
-                  {followUpStatus.urgency === "overdue" && (
-                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                  )}
-                  {followUpStatus.urgency === "today" && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
-                  )}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Ownership & Assignee */}
-          <div className="p-2.5 rounded-xl bg-gray-50/70 border border-gray-200/60 flex items-center justify-between gap-2 min-w-0">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase font-bold text-gray-500">Assignee</span>
-                {!isMine ? (
-                  <button
-                    type="button"
-                    disabled={actionLoading}
-                    onClick={() => onSelfClaim(lead.id)}
-                    className="text-xs font-bold text-emerald-600 hover:underline min-h-[28px] px-1 flex items-center"
-                  >
-                    Claim
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onOpenQuickAssign}
-                    className="text-xs font-bold text-gray-500 hover:underline min-h-[28px] px-1 flex items-center"
-                  >
-                    Reassign
-                  </button>
-                )}
-              </div>
-              <span className="font-bold text-gray-900 truncate flex items-center gap-1.5 text-xs sm:text-sm mt-1">
-                {isMine ? (
-                  <>
-                    <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Assigned to You</span>
-                  </>
-                ) : lead.contributors && lead.contributors.length > 0 ? (
-                  lead.contributors.map((c) => c.user?.name).filter(Boolean).join(", ")
-                ) : (
-                  <>
-                    <UserX className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Unassigned</span>
-                  </>
-                )}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Inline Follow-up Date Selector Popover */}
-        <AnimatePresence>
-          {showFollowUpPicker && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden pt-2 border-t border-gray-100"
-            >
-              <div className="p-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-emerald-950 flex items-center gap-1">
-                    <CalendarClock className="w-3.5 h-3.5 text-emerald-700" /> Reschedule Next Follow-up
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowFollowUpPicker(false)}
-                    className="p-1 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {[
-                    { label: "Today", days: 0 },
-                    { label: "Tomorrow", days: 1 },
-                    { label: "In 3 Days", days: 3 },
-                    { label: "Next Week", days: 7 },
-                  ].map((preset) => {
-                    const d = new Date();
-                    d.setDate(d.getDate() + preset.days);
-                    const iso = formatLocalDateForInput(d);
-                    return (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() => {
-                          onQuickUpdateFollowUp(iso, lead.id);
-                          setShowFollowUpPicker(false);
-                        }}
-                        className="px-2.5 py-1 text-xs font-bold rounded-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-700"
-                      >
-                        {preset.label}
-                      </button>
-                    );
-                  })}
-                  {lead.nextFollowUpDate && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onQuickUpdateFollowUp(null, lead.id);
-                        setShowFollowUpPicker(false);
-                      }}
-                      className="px-2.5 py-1 text-xs font-bold rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 ml-auto"
-                    >
-                      Clear Date
-                    </button>
-                  )}
-                </div>
-              </div>
-            </motion.div>
+          {lead.place && (
+            <span className="text-xs text-gray-500 truncate flex items-center gap-0.5">
+              <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
+              <span>{lead.place}{lead.district ? `, ${lead.district}` : ""}</span>
+            </span>
           )}
-        </AnimatePresence>
+
+          {primaryContact?.name && (
+            <span className="text-xs text-gray-600 truncate flex items-center gap-1">
+              <span className="text-gray-300">•</span>
+              <span className="font-semibold text-gray-700">{primaryContact.name}</span>
+              {primaryContact.phone && (
+                <span className="font-mono text-[11px] text-gray-400">({primaryContact.phone})</span>
+              )}
+            </span>
+          )}
+
+          {lead.score && (
+            <span
+              className={cn(
+                "text-[10px] font-bold px-1.5 py-0.2 rounded border uppercase tracking-wider shrink-0",
+                SCORE_COLORS[lead.score] || "bg-gray-100 text-gray-700 border-gray-200"
+              )}
+            >
+              {lead.score}
+            </span>
+          )}
+
+          {isMine ? (
+            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/80 flex items-center gap-0.5 shrink-0">
+              <UserCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+              <span>You</span>
+            </span>
+          ) : !isMine && lead.contributors?.[0]?.user?.name ? (
+            <span className="text-[11px] font-medium text-gray-600 bg-gray-50 px-1.5 py-0.2 rounded border border-gray-200 shrink-0">
+              {lead.contributors[0].user.name}
+            </span>
+          ) : null}
+        </div>
+
+        {/* Right: Quick Stage Dropdown, Call, WhatsApp, Edit */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <CrmChipDropdown
+            label={LEAD_STATUS_LABELS[lead.status as LeadStatus] ?? lead.status}
+            value={lead.status}
+            icon={React.createElement(STAGE_LUCIDE_ICONS[lead.status as LeadStatus] || Sparkles, {
+              className: "w-2.5 h-2.5 shrink-0 opacity-80",
+            })}
+            options={LEAD_STATUSES.map((st, idx) => ({
+              value: st,
+              label: `${idx + 1}. ${LEAD_STATUS_LABELS[st] ?? st}`,
+            }))}
+            onChange={(st) => onUpdateStage(st, lead.id)}
+            isActive={true}
+            activeClassName={cn(
+              "h-7 px-2 text-xs font-semibold rounded-lg border shadow-2xs",
+              STATUS_COLORS[lead.status as LeadStatus] || "bg-gray-100 text-gray-700 border-gray-200"
+            )}
+            minWidth="min-w-[190px]"
+          />
+
+          {primaryContact?.phone && (
+            <>
+              <a
+                href={`tel:${cleanPrimaryPhone}`}
+                className="h-7 w-7 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 flex items-center justify-center border border-gray-200 transition-all active:scale-95"
+                title={`Call ${primaryContact.phone}`}
+              >
+                <Phone className="w-3 h-3 text-gray-600" />
+              </a>
+              <a
+                href={`https://wa.me/${waPrimaryPhone}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-7 w-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 flex items-center justify-center border border-emerald-200 transition-all active:scale-95"
+                title="WhatsApp"
+              >
+                <MessageSquare className="w-3 h-3 text-emerald-700" />
+              </a>
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={() => onStartEdit(lead)}
+            className="h-7 px-2 text-xs font-medium rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-all flex items-center gap-1 active:scale-95"
+            title="Edit Lead Profile"
+          >
+            <Pencil className="w-3 h-3 text-gray-500" />
+            <span className="hidden sm:inline">Edit</span>
+          </button>
+        </div>
       </div>
 
-      {/* ── 3. Quick Note / Interaction Logger (Fast & Direct) ── */}
-      <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/90 shadow-2xs space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
-            <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-            <span>Record Interaction Note</span>
-          </span>
-          {/* Activity Type Dropdown */}
-          <CrmChipDropdown
-            label={ACTIVITY_TYPES.find((t) => t.value === logType)?.label || "Phone Call"}
-            value={logType}
-            options={ACTIVITY_TYPES.map((t) => ({ value: t.value, label: t.label }))}
-            onChange={setLogType}
-            minWidth="min-w-[170px]"
-          />
-        </div>
-
-        {/* 1-Tap Quick Outcome Disposition Tags */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {OUTCOME_DISPOSITIONS.map((disp) => (
-            <button
-              key={disp.label}
-              type="button"
-              onClick={() =>
-                setLogNotes((prev) => (prev ? `${prev}\n${disp.text}` : disp.text))
-              }
-              className="px-2 py-0.5 text-[11px] font-medium rounded-md bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 active:scale-95 transition-all"
-            >
-              {disp.label}
-            </button>
-          ))}
-        </div>
-
+      {/* ── 2. Quick Note / Interaction Logger (With Next Follow-up on Top) ── */}
+      <div className="bg-white rounded-2xl p-3 sm:p-3.5 border border-gray-200/90 shadow-2xs space-y-2.5">
         <form onSubmit={handleSaveQuickNote} className="space-y-2.5">
+          {/* Header Row: Title & Activity Type Dropdown */}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+              <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>Record Interaction Note</span>
+            </span>
+
+            <CrmChipDropdown
+              label={ACTIVITY_TYPES.find((t) => t.value === logType)?.label || "Phone Call"}
+              value={logType}
+              options={ACTIVITY_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+              onChange={setLogType}
+              minWidth="min-w-[170px]"
+            />
+          </div>
+
+          {/* Follow-up section MOVED TO THE TOP of the interaction section */}
+          <div className="p-2 bg-gray-50/80 rounded-xl border border-gray-200/70 flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <CalendarClock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span className="text-xs font-bold text-gray-700">Next Follow-up:</span>
+              <span className={cn("text-[11px] font-bold px-1.5 py-0.2 rounded-md border", followUpStatus.badgeClass)}>
+                {followUpStatus.label}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={logFollowUpDate || (lead.nextFollowUpDate ? lead.nextFollowUpDate.split("T")[0] : "")}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setLogFollowUpDate(val);
+                  if (val) {
+                    onQuickUpdateFollowUp(val, lead.id);
+                  }
+                }}
+                className="h-7 text-xs bg-white border border-gray-200 rounded-lg px-2 text-gray-800 focus:outline-none focus:ring-1 focus:ring-primary-500 font-sans shadow-2xs"
+              />
+              {(logFollowUpDate || lead.nextFollowUpDate) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLogFollowUpDate("");
+                    onQuickUpdateFollowUp(null, lead.id);
+                  }}
+                  className="h-7 px-2 text-[11px] font-semibold text-rose-600 hover:bg-rose-50 border border-gray-200 rounded-lg bg-white"
+                  title="Clear follow-up date"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 1-Tap Quick Outcome Disposition Tags */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {OUTCOME_DISPOSITIONS.map((disp) => (
+              <button
+                key={disp.label}
+                type="button"
+                onClick={() =>
+                  setLogNotes((prev) => (prev ? `${prev}\n${disp.text}` : disp.text))
+                }
+                className="px-2 py-0.5 text-[11px] font-medium rounded-md bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 active:scale-95 transition-all cursor-pointer"
+              >
+                {disp.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Textarea */}
           <textarea
             rows={2}
             value={logNotes}
@@ -488,21 +366,12 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({
             className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs sm:text-sm font-normal text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 min-h-[68px]"
           />
 
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-medium text-gray-500 shrink-0">Next Follow-up:</span>
-              <input
-                type="date"
-                value={logFollowUpDate}
-                onChange={(e) => setLogFollowUpDate(e.target.value)}
-                className="h-7 text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 text-gray-800 focus:outline-none focus:border-blue-500 font-sans"
-              />
-            </div>
-
+          {/* Bottom of Note: Save Button */}
+          <div className="flex justify-end">
             <button
               type="submit"
               disabled={logSaving || !logNotes.trim()}
-              className="h-7 px-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-semibold text-xs rounded-lg shadow-xs transition-all flex items-center gap-1 active:scale-95"
+              className="h-8 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-40 text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
             >
               {logSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               <span>Save Note</span>

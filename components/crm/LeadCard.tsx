@@ -3,10 +3,6 @@ import {
   Phone,
   MessageSquare,
   Clock,
-  ChevronDown,
-  MapPin,
-  Users,
-  UserCheck,
   UserPlus,
   Sparkles,
 } from "lucide-react";
@@ -24,6 +20,7 @@ import {
   isLeadAssignedToUser,
   isLeadUnassigned,
   formatLocalDateForInput,
+  formatRelativeTime,
 } from "./crm-utils";
 import type { LeadListItem } from "@/lib/crm-api";
 import { CrmChipDropdown } from "./CrmChipDropdown";
@@ -125,33 +122,38 @@ export const LeadCard: React.FC<LeadCardProps> = ({
             </div>
           </div>
 
-          {/* Location & Student Count */}
-          <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5 truncate">
-            <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
-            <span className="truncate">
-              {lead.place || "Place"}{lead.district ? `, ${lead.district}` : ""}
-            </span>
-            {lead.studentCount ? (
+          {/* Latest Interaction Detail (Replaces location & student count) */}
+          <div className="flex items-center gap-1.5 text-xs text-gray-600 mt-1 min-w-0">
+            {lead.timeline && lead.timeline.length > 0 ? (
               <>
-                <span className="text-gray-300 mx-0.5">•</span>
-                <Users className="w-3 h-3 text-gray-400 shrink-0" />
-                <span>{lead.studentCount} students</span>
+                <MessageSquare className="w-3 h-3 text-blue-500 shrink-0" />
+                <span className="truncate text-gray-800 font-medium text-xs">
+                  {lead.timeline[0].notes || `${lead.timeline[0].type || "Activity"} logged`}
+                </span>
+                <span className="text-gray-300 mx-0.5 shrink-0">•</span>
+                <span className="text-[11px] text-gray-400 shrink-0 whitespace-nowrap">
+                  {formatRelativeTime(lead.timeline[0].createdAt)}
+                </span>
+                {lead.timeline[0].user?.name && (
+                  <span className="text-[10px] text-gray-400 truncate hidden sm:inline">
+                    ({lead.timeline[0].user.name})
+                  </span>
+                )}
               </>
-            ) : null}
-            {priority.daysSinceLastContact > 0 && (
-              <>
-                <span className="text-gray-300 mx-0.5">•</span>
-                <span className="text-gray-400">{priority.daysSinceLastContact}d ago</span>
-              </>
+            ) : (
+              <div className="flex items-center gap-1 text-gray-400 italic text-[11px]">
+                <Clock className="w-3 h-3 text-gray-300 shrink-0" />
+                <span>No interaction recorded</span>
+              </div>
             )}
           </div>
 
           {/* Contact Person Name & Role if present */}
           {primaryC?.name && (
-            <div className="text-xs text-gray-600 truncate mt-0.5 font-medium flex items-center gap-1">
-              <span>{primaryC.name}</span>
+            <div className="text-[11px] text-gray-500 truncate mt-0.5 font-medium flex items-center gap-1">
+              <span className="text-gray-700 font-semibold">{primaryC.name}</span>
               {primaryC.role && <span className="text-gray-400">({primaryC.role})</span>}
-              {primaryC.phone && <span className="text-gray-400 font-mono text-[11px]">• {primaryC.phone}</span>}
+              {primaryC.phone && <span className="text-gray-400 font-mono text-[10px]">• {primaryC.phone}</span>}
             </div>
           )}
         </div>
