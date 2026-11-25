@@ -90,8 +90,15 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({
   // Quick Log Note State
   const [logType, setLogType] = useState("CALL");
   const [logNotes, setLogNotes] = useState("");
-  const [logFollowUpDate, setLogFollowUpDate] = useState("");
+  const [logFollowUpDate, setLogFollowUpDate] = useState(
+    lead.nextFollowUpDate ? lead.nextFollowUpDate.split("T")[0] : ""
+  );
   const [logSaving, setLogSaving] = useState(false);
+
+  // Sync logFollowUpDate whenever selected lead or its nextFollowUpDate changes
+  React.useEffect(() => {
+    setLogFollowUpDate(lead.nextFollowUpDate ? lead.nextFollowUpDate.split("T")[0] : "");
+  }, [lead.id, lead.nextFollowUpDate]);
 
   // Edit Timeline Item State
   const [editingTimelineId, setEditingTimelineId] = useState<string | null>(null);
@@ -134,10 +141,13 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({
       await onLogActivity({
         type: logType,
         notes: logNotes.trim(),
-        followUpDate: logFollowUpDate || undefined,
+        followUpDate: logFollowUpDate ? logFollowUpDate : undefined,
       });
+      // If user deliberately cleared the follow-up date and lead had one previously, clear it in the lead
+      if (!logFollowUpDate && lead.nextFollowUpDate) {
+        await onQuickUpdateFollowUp(null, lead.id);
+      }
       setLogNotes("");
-      setLogFollowUpDate("");
     } finally {
       setLogSaving(false);
     }
@@ -302,37 +312,57 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({
             />
           </div>
 
-          {/* Follow-up section MOVED TO THE TOP of the interaction section */}
-          <div className="p-2 bg-gray-50/80 rounded-xl border border-gray-200/70 flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5">
+          {/* Follow-up Section at the top of the interaction note */}
+          <div className="p-2.5 bg-gray-50/90 rounded-xl border border-gray-200/80 flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
               <CalendarClock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
               <span className="text-xs font-bold text-gray-700">Next Follow-up:</span>
-              <span className={cn("text-[11px] font-bold px-1.5 py-0.2 rounded-md border", followUpStatus.badgeClass)}>
+              <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-md border", followUpStatus.badgeClass)}>
                 {followUpStatus.label}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {/* Quick Preset Buttons for Note Follow-up */}
+              {[
+                { label: "Tomorrow", days: 1 },
+                { label: "In 3 Days", days: 3 },
+                { label: "Next Week", days: 7 },
+              ].map((p) => {
+                const d = new Date();
+                d.setDate(d.getDate() + p.days);
+                const iso = formatLocalDateForInput(d);
+                const isSelected = logFollowUpDate === iso;
+                return (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => setLogFollowUpDate(iso)}
+                    className={cn(
+                      "h-7 px-2 text-xs font-medium rounded-lg border transition-all active:scale-95 cursor-pointer shadow-2xs",
+                      isSelected
+                        ? "bg-primary-600 text-white border-primary-700 font-bold"
+                        : "bg-white hover:bg-gray-100 text-gray-700 border-gray-200"
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+
               <input
                 type="date"
-                value={logFollowUpDate || (lead.nextFollowUpDate ? lead.nextFollowUpDate.split("T")[0] : "")}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setLogFollowUpDate(val);
-                  if (val) {
-                    onQuickUpdateFollowUp(val, lead.id);
-                  }
-                }}
-                className="h-7 text-xs bg-white border border-gray-200 rounded-lg px-2 text-gray-800 focus:outline-none focus:ring-1 focus:ring-primary-500 font-sans shadow-2xs"
+                value={logFollowUpDate}
+                onChange={(e) => setLogFollowUpDate(e.target.value)}
+                className="h-7 text-xs bg-white border border-gray-200 rounded-lg px-2 text-gray-800 focus:outline-none focus:ring-1 focus:ring-primary-500 font-sans shadow-2xs cursor-pointer"
+                title="Select next follow-up date"
               />
-              {(logFollowUpDate || lead.nextFollowUpDate) && (
+
+              {logFollowUpDate && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setLogFollowUpDate("");
-                    onQuickUpdateFollowUp(null, lead.id);
-                  }}
-                  className="h-7 px-2 text-[11px] font-semibold text-rose-600 hover:bg-rose-50 border border-gray-200 rounded-lg bg-white"
+                  onClick={() => setLogFollowUpDate("")}
+                  className="h-7 px-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 bg-rose-50 border border-rose-200 rounded-lg transition-all active:scale-95 shadow-2xs"
                   title="Clear follow-up date"
                 >
                   Clear
