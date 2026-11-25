@@ -4,6 +4,7 @@ import "@fontsource/allura/latin-400.css";
 import "./best-performance-poster.css";
 
 export type PosterStudent = {
+  studentId?: string;
   name: string;
   photoUrl?: string | null;
   rank: number;

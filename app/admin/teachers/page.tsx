@@ -39,6 +39,7 @@ import {
  GraduationCap, CheckCircle2, ChevronDown, ChevronRight, Trash2, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAvatarCropper } from "@/hooks/useAvatarCropper";
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -106,6 +107,7 @@ export default function AdminTeachersPage() {
   const [fEmergencyPhone, setFEmergencyPhone] = useState("");
   const [fPhotoUrl, setFPhotoUrl] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const { crop: cropAvatar, modal: avatarCropperModal } = useAvatarCropper();
   const [saving, setSaving] = useState(false);
  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
  const [deleting, setDeleting] = useState(false);
@@ -301,8 +303,11 @@ export default function AdminTeachersPage() {
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-   const file = e.target.files?.[0];
-   if (!file || !editTarget) return;
+   const source = e.target.files?.[0];
+   e.target.value = "";
+   if (!source || !editTarget) return;
+   const file = await cropAvatar(source);
+   if (!file) return;
    setPhotoUploading(true);
    try {
     const res = await uploadTeacherPhoto(cid, token, editTarget.id, file);
@@ -1073,6 +1078,7 @@ export default function AdminTeachersPage() {
     }}
     onClose={() => setShowImport(false)}
    />
+   {avatarCropperModal}
   </DashboardLayout>
  );
 }

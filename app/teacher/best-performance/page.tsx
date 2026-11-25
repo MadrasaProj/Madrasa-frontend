@@ -9,7 +9,8 @@ import { DrawerSelector } from "@/components/DrawerSelector";
 import { BestPerformanceMetric } from "@/components/BestPerformanceMetric";
 import { ScrollableRangeNavigator, commonRangePreset } from "@/components/ScrollableRangeNavigator";
 import { StudentAvatar } from "@/components/teacher/StudentAvatar";
-import { BestPerformancePoster, type PosterStudent } from "@/components/teacher/BestPerformancePoster";
+import type { PosterStudent } from "@/components/teacher/BestPerformancePoster";
+import { PerformanceSvgPoster } from "@/components/poster/SvgPoster";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -19,8 +20,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { OverallBestPerformer } from "@/lib/best-performance-api";
 import { downloadBestPerformanceReport } from "@/lib/best-performance-report";
 import { periodDates } from "@/lib/best-performance-period";
+import { inlineImagesForCapture } from "@/lib/poster-utils";
 import { formatCompactNumber } from "@/lib/format-compact-number";
-import { useBestPerformers, useClasses, useOverallBestStudents } from "@/lib/queries";
+import { useBestPerformers, useClasses, useOverallBestStudents, useStudentsList } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { useActiveClass } from "@/store/activeClass";
 import { useAuthStore } from "@/store/auth";
@@ -123,6 +125,18 @@ export default function TeacherBestPerformancePage({ scope = "teacher" }: { scop
   const enabled = !!cid && !!token && (isAdmin || !!activeClassId);
   const { data: ibadahResponse, isLoading: loadingIbadah, error: errorIbadah } = useBestPerformers({ clientId: cid, token }, query, { enabled });
   const { data: overallResponse, isLoading: loadingOverall, error: errorOverall } = useOverallBestStudents({ clientId: cid, token }, query, { enabled });
+  // The best-performance endpoints omit student photos, so pull them from the
+  // students list and index by id.
+  const { data: studentList } = useStudentsList(
+    { clientId: cid, token },
+    { page: 1, limit: 500, status: "ACTIVE", ...(classId ? { classId } : {}) },
+    { enabled },
+  );
+  const photoById = new Map((studentList?.data ?? []).map((student) => {
+    const raw = student.photoUrl || student.photo;
+    const photo = raw && !/^(data:|blob:|https?:|\/)/.test(raw) ? `data:image/jpeg;base64,${raw}` : raw;
+    return [student.id, photo ?? null] as const;
+  }));
   const isOverall = rankingCategory === "total";
   const isLoading = (isAdmin ? adminClassesLoading : classLoading) || (enabled && (isOverall ? loadingOverall : loadingIbadah));
   const error = (isAdmin ? adminClassesError : classError) ?? (isOverall ? errorOverall : errorIbadah);
@@ -135,8 +149,8 @@ export default function TeacherBestPerformancePage({ scope = "teacher" }: { scop
   const dateRange = `${new Date(`${dates.from}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} – ${new Date(`${dates.to}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
   const listTitle = lang === "ml" ? "മികച്ച വിദ്യാർത്ഥികൾ" : "Best Students";
   const posterStudents: PosterStudent[] = isOverall
-    ? overallData.slice(0, 3).map((student, index) => ({ name: student.name, photoUrl: ibadahData.find((entry) => entry.studentId === student.studentId)?.photoUrl, rank: index + 1, scorePercentage: student.totalPercentage }))
-    : ibadahData.slice(0, 3).map((student, index) => ({ name: student.name, photoUrl: student.photoUrl, rank: index + 1, scorePercentage: student.scorePercentage }));
+    ? overallData.slice(0, 3).map((student, index) => ({ studentId: student.studentId, name: student.name, photoUrl: photoById.get(student.studentId) ?? ibadahData.find((entry) => entry.studentId === student.studentId)?.photoUrl, rank: index + 1, scorePercentage: student.totalPercentage }))
+    : ibadahData.slice(0, 3).map((student, index) => ({ studentId: student.studentId, name: student.name, photoUrl: photoById.get(student.studentId) ?? student.photoUrl, rank: index + 1, scorePercentage: student.scorePercentage }));
 
   const selectCategory = (category: string) => setSearchParams((previous) => {
     const next = new URLSearchParams(previous);
@@ -173,6 +187,9 @@ export default function TeacherBestPerformancePage({ scope = "teacher" }: { scop
       if (!element) throw new Error("Poster is unavailable");
       await document.fonts.ready;
       await Promise.all(Array.from(element.querySelectorAll("img")).map((image) => image.decode().catch(() => undefined)));
+      // The SVG poster uses <image>, so inline the student's avatar/logo as a
+      // data URL before capture; otherwise the exported PNG can miss it.
+      await inlineImagesForCapture(element);
       const { snapdom } = await import("@zumer/snapdom");
       const result = await snapdom(element, { scale: 2 });
       const safeName = student.name.normalize("NFKD").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || `student-${student.rank}`;
@@ -233,7 +250,7 @@ export default function TeacherBestPerformancePage({ scope = "teacher" }: { scop
         {!isLoading && !error && (isAdmin || activeClassId) && (
           <>
             {isOverall ? topOverall && (
-              <ScoreHero name={topOverall.name} className={topOverall.className || className} photoUrl={ibadahData.find((student) => student.studentId === topOverall.studentId)?.photoUrl} rank={`${lang === "ml" ? "റാങ്ക്" : "Rank"} ${topOverall.rank}/${overallData.length}`} score={topOverall.totalScore} percentage={topOverall.totalPercentage} scoreLabel={lang === "ml" ? "സ്കോർ" : "Score"} heading={lang === "ml" ? (isAdmin && !classId ? "മദ്രസയിലെ മികച്ച വിദ്യാർത്ഥി" : "ക്ലാസിലെ മികച്ച വിദ്യാർത്ഥി") : (isAdmin && !classId ? "Top student in the madrasa" : "Top student in your class")}>
+              <ScoreHero name={topOverall.name} className={topOverall.className || className} photoUrl={photoById.get(topOverall.studentId) ?? ibadahData.find((student) => student.studentId === topOverall.studentId)?.photoUrl} rank={`${lang === "ml" ? "റാങ്ക്" : "Rank"} ${topOverall.rank}/${overallData.length}`} score={topOverall.totalScore} percentage={topOverall.totalPercentage} scoreLabel={lang === "ml" ? "സ്കോർ" : "Score"} heading={lang === "ml" ? (isAdmin && !classId ? "മദ്രസയിലെ മികച്ച വിദ്യാർത്ഥി" : "ക്ലാസിലെ മികച്ച വിദ്യാർത്ഥി") : (isAdmin && !classId ? "Top student in the madrasa" : "Top student in your class")}>
                 {[
                   { label: lang === "ml" ? "ഹാജർ" : "Attendance", score: topOverall.attendance.score, maxScore: topOverall.attendance.maxScore, detail: `${topOverall.attendance.rate}% · ${topOverall.attendance.presentDays}/${topOverall.attendance.totalWorkingDaytillToday ?? topOverall.attendance.totalDays}`, icon: CalendarDays, tone: "bg-linear-120 from-white via-white  to-primary-50 text-primary-700" },
                   { label: lang === "ml" ? "ഹോംവർക്ക്" : "Homework", score: topOverall.homework.score, maxScore: topOverall.homework.maxScore, detail: `${topOverall.homework.rate}% · ${topOverall.homework.completed}/${topOverall.homework.assigned}`, icon: BookOpen, tone: "bg-linear-120 from-white via-white to-sky-50/40 text-sky-700" },
@@ -243,7 +260,7 @@ export default function TeacherBestPerformancePage({ scope = "teacher" }: { scop
               </ScoreHero>
             ) : topIbadah && (
               <div className="space-y-4">
-                <ScoreHero name={topIbadah.name} className={className} photoUrl={topIbadah.photoUrl} rank={`${lang === "ml" ? "റാങ്ക്" : "Rank"} 1/${ibadahData.length}`} score={topIbadah.score} percentage={topIbadah.scorePercentage} scoreLabel={lang === "ml" ? "സ്കോർ" : "Score"} heading={lang === "ml" ? (isAdmin && !classId ? "മദ്രസയിലെ മികച്ച ഇബാദത്ത് പ്രകടനം" : "ക്ലാസിലെ മികച്ച ഇബാദത്ത് പ്രകടനം") : (isAdmin && !classId ? "Top Ibadah performance in the madrasa" : "Top Ibadah performance in your class")}>
+                <ScoreHero name={topIbadah.name} className={className} photoUrl={photoById.get(topIbadah.studentId) ?? topIbadah.photoUrl} rank={`${lang === "ml" ? "റാങ്ക്" : "Rank"} 1/${ibadahData.length}`} score={topIbadah.score} percentage={topIbadah.scorePercentage} scoreLabel={lang === "ml" ? "സ്കോർ" : "Score"} heading={lang === "ml" ? (isAdmin && !classId ? "മദ്രസയിലെ മികച്ച ഇബാദത്ത് പ്രകടനം" : "ക്ലാസിലെ മികച്ച ഇബാദത്ത് പ്രകടനം") : (isAdmin && !classId ? "Top Ibadah performance in the madrasa" : "Top Ibadah performance in your class")}>
                   {[
                     { label: lang === "ml" ? "നമസ്കാരങ്ങൾ" : "Prayers", value: topIbadah.totalPrayers, icon: Heart, tone: "bg-linear-120 from-white via-white to-primary-50/40 text-primary-700" },
                     { label: lang === "ml" ? "പേജുകൾ" : "Pages", value: topIbadah.totalQuranPages, icon: BookOpen, tone: "bg-linear-120 from-white via-white to-sky-50/40 text-sky-700" },
@@ -281,7 +298,7 @@ export default function TeacherBestPerformancePage({ scope = "teacher" }: { scop
             </ResponsivePopover>
 
             {selectedPoster && <div className="pointer-events-none fixed left-[-10000px] top-0" aria-hidden="true" ref={posterRef}>
-              <BestPerformancePoster key={`${rankingCategory}-${selectedPoster.rank}-${selectedPoster.name}`} student={selectedPoster} category={rankingCategory} className={className} madrasaName={user?.madrasaName || "Smart Madrasa"} madrasaLogo={user?.madrasaLogo} dateRange={dateRange} />
+              <PerformanceSvgPoster key={`${rankingCategory}-${selectedPoster.rank}-${selectedPoster.name}`} studentName={selectedPoster.name} rank={selectedPoster.rank} category={rankingCategory} madrasaName={user?.madrasaName || "Smart Madrasa"} photoUrl={selectedPoster.photoUrl ?? (selectedPoster.studentId ? photoById.get(selectedPoster.studentId) : null)} />
             </div>}
 
             <section aria-label={listTitle} className="mb-10">
