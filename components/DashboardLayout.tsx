@@ -2,7 +2,7 @@ import { Sidebar, BottomNav } from "@/components/Navigation";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import {
   Bell, ShieldAlert, X, ChevronDown, UserCircle, LogOut,
-  HelpCircle, Check,
+  HelpCircle, Check, Download,
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { StudentAvatar } from "@/components/teacher/StudentAvatar";
 import { DashboardLayoutSkeleton } from "@/components/ui/Skeleton";
+import { usePwaInstall } from "@/lib/pwa";
 
 // ── Super Admin Viewing Banner ─────────────────────────────────────────────────
 
@@ -80,6 +81,7 @@ function UserMenu({
     activeStudentId,
     setActiveStudent,
   } = useAuthStore();
+  const { isInstalled, promptToInstall, installPrompt } = usePwaInstall();
   const menuRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const isDrawer = variant === "drawer";
@@ -245,6 +247,26 @@ function UserMenu({
             <span className="font-medium flex-1">Notifications</span>
             <span className="w-2 h-2 bg-red-500 rounded-full" />
           </Link>
+        )}
+
+        {!isInstalled && (
+          <button
+            onClick={async () => {
+              setOpen(false);
+              if (installPrompt) {
+                await promptToInstall();
+              } else {
+                window.dispatchEvent(new Event("beforeinstallprompt"));
+              }
+            }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100 transition-colors"
+            role="menuitem"
+          >
+            <span className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+              <Download className="w-4 h-4 text-emerald-600" />
+            </span>
+            <span className="font-semibold flex-1 text-left">Install App</span>
+          </button>
         )}
 
         <button

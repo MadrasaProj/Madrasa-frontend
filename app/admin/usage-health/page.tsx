@@ -41,6 +41,7 @@ import {
   TrendingUp,
   TrendingDown,
   Info,
+  LogIn,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -393,7 +394,7 @@ function DetailDrawer({
                   </div>
                   <div>
                     <span className="text-sm font-semibold text-gray-900">Daily Attendance</span>
-                    <p className="text-[11px] text-gray-500">Weight: 35% of overall score</p>
+                    <p className="text-[11px] text-gray-500">Weight: 40% of overall score</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -443,7 +444,7 @@ function DetailDrawer({
                   </div>
                   <div>
                     <span className="text-sm font-semibold text-gray-900">Ibadah Tracking</span>
-                    <p className="text-[11px] text-gray-500">Weight: 35% · Core Differentiator</p>
+                    <p className="text-[11px] text-gray-500">Weight: 40% · Core Differentiator</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -521,6 +522,76 @@ function DetailDrawer({
                   <span className="font-semibold text-gray-900">{client.counts.classes}</span>
                 </div>
               </div>
+            </div>
+
+            {/* 4. Portal Login & Access Telemetry */}
+            <div className="p-4 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-teal-100 text-teal-700">
+                    <LogIn className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-gray-900">Portal Login & Access</span>
+                    <p className="text-[11px] text-gray-500">
+                      Informational Telemetry · 0% direct impact on rating
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span
+                    className={cn(
+                      "text-xs font-bold px-2 py-0.5 rounded-full border",
+                      client.metrics.portalLogin?.status === "FREQUENT"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : client.metrics.portalLogin?.status === "RECENT"
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : client.metrics.portalLogin?.status === "OCCASIONAL"
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : client.metrics.portalLogin?.status === "DISABLED"
+                        ? "bg-rose-50 text-rose-700 border-rose-200"
+                        : "bg-gray-100 text-gray-600 border-gray-200"
+                    )}
+                  >
+                    {client.metrics.portalLogin?.status ?? "INACTIVE"}
+                  </span>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {client.metrics.portalLogin?.isLoginEnabled ? "Login Enabled" : "Login Disabled"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-200/60 text-xs text-gray-600">
+                <div>
+                  <span className="text-gray-400 block text-[10px]">30d Logins</span>
+                  <span className="font-semibold text-gray-900">
+                    {client.metrics.portalLogin?.total30d ?? 0}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[10px]">7d Activity</span>
+                  <span className="font-semibold text-gray-900">
+                    {client.metrics.portalLogin?.total7d ?? 0}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[10px]">Last Portal Login</span>
+                  <span className="font-semibold text-gray-900">
+                    {client.metrics.portalLogin?.lastLoginAt
+                      ? new Date(client.metrics.portalLogin.lastLoginAt).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "Never"}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-gray-500 italic mt-1">
+                Monitors web app engagement by admins, teachers, and parents. Excluded from overall score to ensure offline or localized teaching models aren&apos;t penalized.
+              </p>
             </div>
           </div>
 
@@ -733,7 +804,7 @@ export default function AdminUsageHealthPage() {
 
         {/* Strategic Executive KPI Scorecards */}
         {summary && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* 1. Overall Portfolio Health */}
             <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
@@ -782,7 +853,7 @@ export default function AdminUsageHealthPage() {
                 <span className="text-xs text-gray-400 font-medium">Daily Habit</span>
               </div>
               <p className="text-[11px] text-gray-500">
-                Weighted 35% · Regular classroom attendance roll-call consistency.
+                Weighted 40% · Regular classroom attendance roll-call consistency.
               </p>
             </div>
 
@@ -803,7 +874,7 @@ export default function AdminUsageHealthPage() {
                 <span className="text-xs text-emerald-600 font-semibold">Core Differentiator</span>
               </div>
               <p className="text-[11px] text-gray-500">
-                Weighted 35% · Prayer log frequency, consistency & active student reach.
+                Weighted 40% · Prayer log frequency, consistency & active student reach.
               </p>
             </div>
 
@@ -825,6 +896,27 @@ export default function AdminUsageHealthPage() {
               </div>
               <p className="text-[11px] text-gray-500">
                 Weighted 20% · Weekly class homework assignments created by teachers.
+              </p>
+            </div>
+
+            {/* 5. Portal Login Telemetry */}
+            <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                  Portal Login Access
+                </span>
+                <span className="p-1.5 rounded-lg bg-teal-50 text-teal-600">
+                  <LogIn className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold text-teal-700">
+                  {summary.totalPortalLogins30d ?? 0}
+                </span>
+                <span className="text-xs text-teal-600 font-semibold">Logins (30d)</span>
+              </div>
+              <p className="text-[11px] text-gray-500">
+                {summary.activePortalsCount ?? 0} active portals · 0% direct impact on rating.
               </p>
             </div>
           </div>
@@ -969,6 +1061,7 @@ export default function AdminUsageHealthPage() {
                   <option value="ibadahScore">Ibadah Score</option>
                   <option value="attendanceScore">Attendance Score</option>
                   <option value="homeworkScore">Homework Score</option>
+                  <option value="portalLogin">Portal Login Activity</option>
                   <option value="students">Student Count</option>
                   <option value="name">Madrasa Name</option>
                   <option value="lastActive">Recently Active</option>
@@ -1021,6 +1114,7 @@ export default function AdminUsageHealthPage() {
                     <th className="py-3 px-4">Ibadah Tracking</th>
                     <th className="py-3 px-4">Attendance</th>
                     <th className="py-3 px-4">Homework</th>
+                    <th className="py-3 px-4">Portal Login</th>
                     <th className="py-3 px-4">Strategic Recommendation</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
@@ -1170,6 +1264,41 @@ export default function AdminUsageHealthPage() {
                                 ? `${client.metrics.homework.total30d} assignments/30d`
                                 : "Zero assignments"}
                             </p>
+                          </div>
+                        </td>
+
+                        {/* 7. Portal Login Metrics (Informational, 0% direct impact) */}
+                        <td className="py-3.5 px-4 min-w-[125px]">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span
+                                className={cn(
+                                  "font-bold text-[10px] px-1.5 py-0.5 rounded border",
+                                  client.metrics.portalLogin?.status === "FREQUENT"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : client.metrics.portalLogin?.status === "RECENT"
+                                    ? "bg-blue-50 text-blue-700 border-blue-200"
+                                    : client.metrics.portalLogin?.status === "OCCASIONAL"
+                                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                                    : client.metrics.portalLogin?.status === "DISABLED"
+                                    ? "bg-rose-50 text-rose-700 border-rose-200"
+                                    : "bg-gray-100 text-gray-600 border-gray-200"
+                                )}
+                              >
+                                {client.metrics.portalLogin?.status ?? "INACTIVE"}
+                              </span>
+                              <span className="text-gray-400 text-[10px]">
+                                {client.metrics.portalLogin?.total30d ?? 0} logins
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-gray-500">
+                              {client.metrics.portalLogin?.lastLoginAt
+                                ? `Last: ${new Date(client.metrics.portalLogin.lastLoginAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`
+                                : "Never"}
+                            </p>
+                            <span className="text-[9px] text-gray-400 block font-mono">
+                              (0% rating weight)
+                            </span>
                           </div>
                         </td>
 

@@ -52,7 +52,6 @@ import {
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import PwaInstallButton from "@/components/PwaInstallButton";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
@@ -62,6 +61,7 @@ import { useClientConfig } from "@/lib/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { ButtonGroup } from "./ui/button-group";
+import PwaInstallButton from "@/components/PwaInstallButton";
 
 type NavKey =
   | "dashboard"
@@ -973,6 +973,11 @@ export function Sidebar({
           )}
         </nav>
 
+        {/* ── Compact Sidebar Install App Button ── */}
+        <div className="px-4 py-2 border-t border-gray-100 bg-emerald-50/20 shrink-0">
+          <PwaInstallButton variant="compact" />
+        </div>
+
         {/* ── Mobile sidebar utilities ── */}
         <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 space-y-1 shrink-0">
           <div className="flex items-center justify-between gap-2 px-3 py-2">
@@ -984,10 +989,7 @@ export function Sidebar({
         </div>
 
         <div className="border-t border-gray-100 shrink-0">
-          <div className="px-3.5 pt-3 pb-1 empty:hidden">
-            <PwaInstallButton variant="card" />
-          </div>
-          <div className="p-3.5 pt-1.5">
+          <div className="p-3.5">
             <Button
               onClick={() => {
                 logout();

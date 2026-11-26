@@ -1,4 +1,4 @@
-import { isMobileAppWrapper, isStandalone, markPwaAsInstalled } from "./pwa";
+import { isMobileAppWrapper, isStandalone } from "./pwa";
 
 /**
  * Initializes global adjustments for mobile app wrappers (WebView, Capacitor, React Native, Cordova, Flutter)
@@ -15,7 +15,6 @@ export function initMobileWrapper(): void {
   if (isWrapper) {
     document.documentElement.dataset.mobileApp = "true";
     document.documentElement.classList.add("is-mobile-app");
-    markPwaAsInstalled();
   }
 
   // Helper to determine if the user is in a mobile/touch environment

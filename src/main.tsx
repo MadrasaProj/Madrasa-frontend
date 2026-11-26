@@ -39,15 +39,31 @@ if (typeof window !== "undefined") {
   }
 
   window.addEventListener("beforeinstallprompt", (e) => {
-    // If the app is already installed or running in standalone mode, suppress prompt
+    // If the app is already running in standalone mode, suppress prompt
     if (isPwaInstalledSync()) {
       e.preventDefault();
       (window as any).__pwaInstallPrompt = null;
       return;
     }
-    e.preventDefault();
+
+    // Always store the prompt event globally and notify all listening buttons
     (window as any).__pwaInstallPrompt = e;
     window.dispatchEvent(new Event("pwa-prompt-available"));
+
+    // Check if the current client is a mobile/touch device
+    const isMobile =
+      window.matchMedia?.("(pointer: coarse)").matches ||
+      window.matchMedia?.("(max-width: 1024px)").matches;
+
+    if (isMobile) {
+      // On mobile, suppress the browser's default bottom mini-infobar so our styled UI handles it
+      e.preventDefault();
+    } else {
+      // On desktop (Chrome / Edge), do NOT call preventDefault!
+      // This preserves the native direct install button in the address bar (omnibox)
+      // and enables "Install Smart Madrasa..." in the browser's 3-dot menu.
+      console.log("[PWA] Desktop browser detected: native address bar direct install enabled.");
+    }
   });
 
   window.addEventListener("appinstalled", () => {

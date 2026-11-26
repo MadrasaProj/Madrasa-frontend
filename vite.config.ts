@@ -14,6 +14,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      devOptions: {
+        enabled: true,
+      },
       includeAssets: ["icons/**", "favicon.ico"],
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
@@ -25,17 +28,28 @@ export default defineConfig({
         theme_color: "#059669",
         background_color: "#faf9f6",
         display: "standalone",
-        orientation: "portrait",
-        related_applications: [
-          {
-            platform: "webapp",
-            url: "/manifest.webmanifest",
-          },
-        ],
+        orientation: "any",
+        start_url: "/",
+        scope: "/",
+        id: "/",
+        prefer_related_applications: false,
+        categories: ["education", "productivity"],
         icons: [
           {
             src: "/icons/icon-192.png",
             sizes: "192x192",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "/icons/icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "maskable",
+          },
+          {
+            src: "/icons/icon-512.png",
+            sizes: "512x512",
             type: "image/png",
             purpose: "any",
           },
@@ -49,6 +63,7 @@ export default defineConfig({
             src: "/icons/icon.svg",
             sizes: "any",
             type: "image/svg+xml",
+            purpose: "any",
           },
         ],
       },

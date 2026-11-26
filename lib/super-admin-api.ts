@@ -586,6 +586,15 @@ export interface UsageHealthMetrics {
     total30d: number;
     status: "HIGH" | "MED" | "LOW";
   };
+  portalLogin: {
+    score: number;
+    total30d: number;
+    total7d: number;
+    lastLoginAt?: string | null;
+    daysSinceLastLogin?: number | null;
+    isLoginEnabled: boolean;
+    status: "FREQUENT" | "RECENT" | "OCCASIONAL" | "INACTIVE" | "DISABLED";
+  };
   vitality: {
     score: number;
     lastLoginDaysAgo: number | null;
@@ -610,6 +619,7 @@ export interface UsageHealthClientItem {
   createdAt: string;
   lastLoginAt?: string;
   attendanceMode: string;
+  isLoginEnabled?: boolean;
   assigneeId?: string | null;
   assignee?: { id: string; name: string; username: string; role?: string } | null;
   counts: {
@@ -633,6 +643,8 @@ export interface UsageHealthSummary {
   dormantCount: number;
   totalUnassignedCount: number;
   totalMadrasasCount: number;
+  activePortalsCount?: number;
+  totalPortalLogins30d?: number;
 }
 
 export interface UsageHealthResponse {

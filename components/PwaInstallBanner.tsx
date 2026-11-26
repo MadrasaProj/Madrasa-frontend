@@ -23,16 +23,7 @@ export default function PwaInstallBanner() {
       return;
     }
 
-    const mobile = window.matchMedia("(max-width: 767px)");
-    const updateVisibility = () => {
-      setOpen(mobile.matches && !isInstalled && !dismissed && Boolean(installPrompt));
-    };
-
-    updateVisibility();
-    mobile.addEventListener("change", updateVisibility);
-    return () => {
-      mobile.removeEventListener("change", updateVisibility);
-    };
+    setOpen(!isInstalled && !dismissed && Boolean(installPrompt));
   }, [isInstalled, dismissed, installPrompt]);
 
   const close = () => {

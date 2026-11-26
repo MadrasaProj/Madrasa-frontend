@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Download,
   Smartphone,
+  Laptop,
   Share,
   PlusSquare,
   MoreVertical,
@@ -14,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { usePwaInstall } from "@/lib/pwa";
 
 export interface PwaInstallButtonProps {
-  variant?: "card" | "banner" | "button";
+  variant?: "card" | "banner" | "button" | "compact" | "pill";
   className?: string;
 }
 
@@ -27,23 +28,27 @@ export default function PwaInstallButton({
   const [showGuideModal, setShowGuideModal] = useState(false);
   const { lang } = useLanguageStore();
 
-  const handleInstall = async () => {
-    if (!installPrompt) {
-      setShowGuideModal(true);
-      return;
-    }
+  const isDesktop =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(min-width: 1025px) and (pointer: fine)").matches;
 
-    try {
-      await promptToInstall();
-      setDismissed(true);
-    } catch (err) {
-      console.warn("PWA prompt error, showing manual guide:", err);
-      setShowGuideModal(true);
+  const handleInstall = async () => {
+    if (installPrompt) {
+      try {
+        const success = await promptToInstall();
+        if (success) {
+          setDismissed(true);
+          return;
+        }
+      } catch (err) {
+        console.warn("PWA prompt error, showing manual guide:", err);
+      }
     }
+    setShowGuideModal(true);
   };
 
-  // If already installed, dismissed, or no install action possible, do not show
-  if (isInstalled || dismissed || (!installPrompt && !isIos)) {
+  // If already installed/standalone or dismissed, do not show
+  if (isInstalled || dismissed) {
     return null;
   }
 
@@ -52,7 +57,7 @@ export default function PwaInstallButton({
       {(variant === "card" || variant === "banner") && (
         <div
           className={cn(
-            "relative isolate overflow-hidden rounded-2xl border border-primary-200 bg-linear-to-br from-primary-600 via-primary-600 to-primary-800 p-4 text-white shadow-xs sm:p-5 lg:hidden",
+            "relative isolate overflow-hidden rounded-2xl border border-primary-200 bg-linear-to-br from-primary-600 via-primary-600 to-primary-800 p-4 text-white shadow-xs sm:p-5",
             className,
           )}
         >
@@ -94,6 +99,35 @@ export default function PwaInstallButton({
         </div>
       )}
 
+      {variant === "compact" && (
+        <button
+          type="button"
+          onClick={handleInstall}
+          className={cn(
+            "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 transition-colors shadow-xs active:scale-[0.98]",
+            className,
+          )}
+        >
+          <Download className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+          <span>{lang === "ml" ? "ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്യൂ" : "Install App"}</span>
+        </button>
+      )}
+
+      {variant === "pill" && (
+        <button
+          type="button"
+          onClick={handleInstall}
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors shadow-xs shrink-0 active:scale-95",
+            className,
+          )}
+          title="Install Smart Madrasa app"
+        >
+          <Download className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+          <span>{lang === "ml" ? "ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്യൂ" : "Install App"}</span>
+        </button>
+      )}
+
       {variant === "button" && (
         <Button
           size="lg"
@@ -110,7 +144,7 @@ export default function PwaInstallButton({
         </Button>
       )}
 
-      {/* Guide modal for iOS and browsers without native prompt */}
+      {/* Guide modal for browsers or devices requiring manual step */}
       <AnimatePresence>
         {showGuideModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
@@ -132,7 +166,11 @@ export default function PwaInstallButton({
 
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-600 to-teal-600 text-white flex items-center justify-center shrink-0 shadow-md">
-                  <Smartphone className="w-6 h-6" />
+                  {isDesktop ? (
+                    <Laptop className="w-6 h-6" />
+                  ) : (
+                    <Smartphone className="w-6 h-6" />
+                  )}
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-gray-900">
@@ -212,6 +250,58 @@ export default function PwaInstallButton({
                           <>
                             Tap <strong>&apos;Add&apos;</strong> in the top
                             right corner.
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : isDesktop ? (
+                <div className="space-y-3 pt-1 text-xs text-gray-700">
+                  <p className="text-gray-500 font-medium">
+                    {lang === "ml"
+                      ? "ഡെസ്ക്ടോപ്പ് ബ്രൗസറിൽ നിന്ന് നേരിട്ട് ഇൻസ്റ്റാൾ ചെയ്യുക:"
+                      : "Direct install in Chrome or Edge:"}
+                  </p>
+                  <div className="space-y-2.5">
+                    <div className="flex items-start gap-2.5 p-2.5 bg-emerald-50/60 border border-emerald-100 rounded-xl">
+                      <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0 text-[11px]">
+                        1
+                      </span>
+                      <p className="flex-1 leading-relaxed text-gray-800">
+                        {lang === "ml" ? (
+                          <>
+                            ബ്രൗസറിന്റെ അഡ്രസ്സ് ബാറിന്റെ (URL bar) വലതുവശത്തുള്ള{" "}
+                            <strong>ഇൻസ്റ്റാൾ ഐക്കൺ</strong> (
+                            <Download className="w-3.5 h-3.5 inline text-emerald-700 mx-0.5" />
+                            ) ക്ലിക്ക് ചെയ്യുക.
+                          </>
+                        ) : (
+                          <>
+                            Click the <strong>Install</strong> icon (
+                            <Download className="w-3.5 h-3.5 inline text-emerald-700 mx-0.5" />
+                            ) on the right side of the address bar.
+                          </>
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-2.5 p-2.5 bg-gray-50 rounded-xl">
+                      <span className="w-5 h-5 rounded-full bg-primary-100 text-primary-700 font-bold flex items-center justify-center shrink-0 text-[11px]">
+                        2
+                      </span>
+                      <p className="flex-1 leading-relaxed">
+                        {lang === "ml" ? (
+                          <>
+                            അല്ലെങ്കിൽ മെനു (
+                            <MoreVertical className="w-3.5 h-3.5 inline text-gray-600 mx-0.5" />
+                            ) തുറന്ന് <strong>&apos;Install Smart Madrasa...&apos;</strong> തിരഞ്ഞെടുക്കുക.
+                          </>
+                        ) : (
+                          <>
+                            Or open browser menu (
+                            <MoreVertical className="w-3.5 h-3.5 inline text-gray-600 mx-0.5" />
+                            ) &gt; <strong>&apos;Install Smart Madrasa...&apos;</strong>
                           </>
                         )}
                       </p>

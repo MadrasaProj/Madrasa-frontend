@@ -9,7 +9,7 @@ export interface BeforeInstallPromptEvent extends Event {
 
 /**
  * Checks if the current environment is running wrapped inside a native mobile app
- * (React Native WebView, Capacitor, Cordova, Flutter WebView, Android/iOS WebView, or custom wrapper parameters).
+ * (React Native WebView, Capacitor, Cordova, Flutter WebView, or explicit wrapper parameters).
  */
 export function isMobileAppWrapper(): boolean {
   if (typeof window === "undefined") return false;
@@ -22,20 +22,15 @@ export function isMobileAppWrapper(): boolean {
       (window as any).__MOBILE_APP_WRAPPER__
     );
 
-    const ua = navigator.userAgent || "";
-    const isWebViewUa =
-      /wv|WebView|Android.*Version\/[0-9.]*\s+Chrome\/[0-9.]*\s+Mobile/i.test(ua) ||
-      (/(iPhone|iPod|iPad).*AppleWebKit(?!.*Safari)/i.test(ua) && !((navigator as any).standalone));
-
+    const search = window.location?.search || "";
     const isUrlWrapper =
-      window.location?.search?.includes("mode=app") ||
-      window.location?.search?.includes("mode=mobile") ||
-      window.location?.search?.includes("app=true") ||
-      window.location?.search?.includes("isApp=true") ||
-      window.location?.search?.includes("platform=mobile") ||
-      window.location?.search?.includes("wrapper=true");
+      search.includes("mode=app") ||
+      search.includes("mode=wrapper") ||
+      search.includes("app=true") ||
+      search.includes("isApp=true") ||
+      search.includes("wrapper=true");
 
-    return hasInjectedBridge || isWebViewUa || isUrlWrapper;
+    return hasInjectedBridge || isUrlWrapper;
   } catch {
     return false;
   }
@@ -43,15 +38,15 @@ export function isMobileAppWrapper(): boolean {
 
 /**
  * Checks if the current window/environment is running in standalone PWA mode,
- * fullscreen, minimal-ui, window-controls-overlay, an Android TWA, or a mobile app wrapper.
+ * window-controls-overlay, an Android TWA, or a mobile app wrapper.
+ * Note: Browser fullscreen (F11/macOS fullscreen) is explicitly excluded so it
+ * does not falsely flag regular desktop browser tabs as installed PWAs.
  */
 export function isStandalone(): boolean {
   if (typeof window === "undefined") return false;
   try {
     const isStandaloneDisplay =
       window.matchMedia?.("(display-mode: standalone)").matches ||
-      window.matchMedia?.("(display-mode: fullscreen)").matches ||
-      window.matchMedia?.("(display-mode: minimal-ui)").matches ||
       window.matchMedia?.("(display-mode: window-controls-overlay)").matches;
 
     const isIosStandalone = (window.navigator as Navigator & { standalone?: boolean })?.standalone === true;
@@ -74,38 +69,24 @@ export function isStandalone(): boolean {
 }
 
 /**
- * Synchronous check to determine if the PWA is already installed:
- * 1. Runtime memory flag `window.__pwaInstalled`
- * 2. Active standalone / TWA mode
- * 3. Persisted `pwa_installed` flag in localStorage
+ * Synchronous check to determine if the PWA is currently running in installed/standalone mode.
+ * In a standard mobile or desktop browser (not standalone), this returns false so the install UI can be presented.
  */
 export function isPwaInstalledSync(): boolean {
   if (typeof window === "undefined") return false;
 
-  // 1. In-memory flag
-  if ((window as any).__pwaInstalled === true) {
-    return true;
-  }
-
-  // 2. Currently running in standalone / installed mode
+  // 1. Active standalone / TWA / mobile wrapper mode
   if (isStandalone()) {
     (window as any).__pwaInstalled = true;
-    try {
-      window.localStorage?.setItem(PWA_INSTALLED_KEY, "true");
-    } catch {
-      // Ignore storage errors in private browsing
-    }
     return true;
   }
 
-  // 3. Persisted in localStorage
+  // 2. In standard browser, ensure stale localStorage key does not suppress install UI
+  (window as any).__pwaInstalled = false;
   try {
-    if (window.localStorage?.getItem(PWA_INSTALLED_KEY) === "true") {
-      (window as any).__pwaInstalled = true;
-      return true;
-    }
+    window.localStorage?.removeItem(PWA_INSTALLED_KEY);
   } catch {
-    // Ignore storage errors
+    // Ignore storage errors in private browsing
   }
 
   return false;
@@ -161,7 +142,8 @@ export async function checkPwaInstalledAsync(): Promise<boolean> {
 
       if (typeof getRelatedApps === "function") {
         const relatedApps = await getRelatedApps.call(navigator);
-        if (Array.isArray(relatedApps) && relatedApps.length > 0) {
+        // Only mark installed if the user is actually currently in standalone mode
+        if (Array.isArray(relatedApps) && relatedApps.length > 0 && isStandalone()) {
           markPwaAsInstalled();
           return true;
         }
