@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { Download, Share2, Loader2, Upload, X, Crown, Trophy, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ClassReportRow, ClassReport } from "@/lib/results-api";
-import { downloadTransparentPNG, shareTransparentPNG } from "@/lib/poster-utils";
+import { downloadTransparentPNG, shareTransparentPNG, inlineImagesForCapture } from "@/lib/poster-utils";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -80,6 +80,7 @@ export function RankPoster({ row, report, madrasaName, madrasaLogo, studentPhoto
     if (!posterRef.current) return;
     setExporting(type);
     try {
+      await inlineImagesForCapture(posterRef.current);
       if (type === "png") {
         await downloadTransparentPNG(posterRef.current, stem);
       } else {
@@ -175,7 +176,7 @@ export function RankPoster({ row, report, madrasaName, madrasaLogo, studentPhoto
             cfg.ring,
           )}>
             {photo ? (
-              <img src={photo} alt={student.name} className="w-full h-full object-cover" />
+              <img src={photo} alt={student.name} crossOrigin="anonymous" className="w-full h-full object-cover" />
             ) : (
               <span className="text-5xl">{student.gender === "FEMALE" ? "👩" : "👨"}</span>
             )}

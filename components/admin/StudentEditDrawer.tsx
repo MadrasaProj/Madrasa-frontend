@@ -22,6 +22,7 @@ import { useAuthStore } from "@/store/auth";
 import { t } from "@/lib/i18n";
 import { useLanguageStore } from "@/store/language";
 import { toast } from "sonner";
+import { useAvatarCropper } from "@/hooks/useAvatarCropper";
 
 interface FormState {
   name: string; uid: string; adno: string; classId: string; gender: "MALE" | "FEMALE";
@@ -142,6 +143,7 @@ export default function StudentEditDrawer({
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const { crop: cropAvatar, modal: avatarCropperModal } = useAvatarCropper();
 
   // Sibling detection and deliberate password change confirmation
   const [siblingInfo, setSiblingInfo] = useState<CheckParentPhoneResponse | null>(null);
@@ -437,13 +439,15 @@ export default function StudentEditDrawer({
                     size="lg"
                     disabled={uploadingPhoto}
                     onChange={async (event) => {
-                      const file = event.target.files?.[0];
+                      const source = event.target.files?.[0];
+                      event.target.value = "";
+                      if (!source) return;
+                      const file = await cropAvatar(source);
                       if (!file) return;
                       const reader = new FileReader();
                       reader.onload = () => setAvatarPreview(reader.result as string);
                       reader.readAsDataURL(file);
                       await handleAvatarUpload(file);
-                      event.target.value = "";
                     }}
                   />
                   {uploadingPhoto && <p className="flex items-center gap-1 text-xs text-gray-500"><Loader2 className="size-3 animate-spin" /> Uploading photo…</p>}
@@ -683,6 +687,7 @@ export default function StudentEditDrawer({
           </div>
         )}
       </ResponsivePopover>
+      {avatarCropperModal}
     </>
   );
 }

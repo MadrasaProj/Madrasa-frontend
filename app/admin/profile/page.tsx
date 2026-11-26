@@ -14,6 +14,7 @@ import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { useAvatarCropper } from "@/hooks/useAvatarCropper";
 import {
   AlertCircle, Building2, Camera, Check, CheckCircle2, ChevronRight, Circle,
   Copy, Eye, EyeOff, KeyRound, Loader2, Mail, MapPin, Pencil, Phone,
@@ -60,6 +61,7 @@ export default function AdminProfilePage() {
   const [address, setAddress] = useState(user?.address ?? "");
   const [picPreview, setPicPreview] = useState<string | null>(user?.photoUrl ?? user?.photo ?? null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const { crop: cropAvatar, modal: avatarCropperModal } = useAvatarCropper();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -111,10 +113,12 @@ export default function AdminProfilePage() {
   };
 
   const handlePicFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !accessToken) return;
+    const source = event.target.files?.[0];
+    event.target.value = "";
+    if (!source || !accessToken) return;
+    const file = await cropAvatar(source);
+    if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      event.target.value = "";
       setError("Profile image must be under 2MB.");
       return;
     }
@@ -380,6 +384,7 @@ export default function AdminProfilePage() {
           )}
         </div>
       </ResponsivePopover>
+      {avatarCropperModal}
     </DashboardLayout>
   );
 }

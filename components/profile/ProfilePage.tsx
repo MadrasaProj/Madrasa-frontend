@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { useAvatarCropper } from "@/hooks/useAvatarCropper";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
@@ -131,6 +132,7 @@ export default function ProfilePage({ config, layout }: ProfilePageProps) {
   const [msrId, setMsrId] = useState(user?.msrId ?? "");
   const [picPreview, setPicPreview] = useState<string | null>(user?.photoUrl ?? user?.photo ?? null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const { crop: cropAvatar, modal: avatarCropperModal } = useAvatarCropper();
 
   // Parent-only fields
   const [parentAltPhone, setParentAltPhone] = useState(user?.phone ?? user?.parentPhone ?? "");
@@ -263,7 +265,10 @@ export default function ProfilePage({ config, layout }: ProfilePageProps) {
   };
 
   const handlePicFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const source = e.target.files?.[0];
+    e.target.value = "";
+    if (!source) return;
+    const file = await cropAvatar(source);
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) { setError("Image must be under 2MB."); return; }
 
@@ -919,6 +924,7 @@ export default function ProfilePage({ config, layout }: ProfilePageProps) {
         </Tabs>
 
       </ResponsivePopover>
+      {avatarCropperModal}
     </DashboardLayout>
   );
 }

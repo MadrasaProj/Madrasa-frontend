@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useAvatarCropper } from "@/hooks/useAvatarCropper";
 
 import { Group, Leafer, Image as LeaferImage, Rect, Text } from "leafer-ui";
 
@@ -631,6 +632,7 @@ function filterStudents(
 
 export default function IDCardsPage() {
   const { lang } = useLanguageStore();
+  const { crop: cropAvatar, modal: avatarCropperModal } = useAvatarCropper();
 
   const { user, accessToken, activeClientId } = useAuthStore();
 
@@ -1066,20 +1068,26 @@ export default function IDCardsPage() {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
+                      onChange={async (e) => {
+                        const source = e.target.files?.[0];
 
-                        if (file) {
-                          const reader = new FileReader();
+                        e.target.value = "";
 
-                          reader.onload = () => {
-                            setAvatars((prev) => ({
-                              ...prev,
-                              [selected.id]: reader.result as string,
-                            }));
-                          };
+                        if (source) {
+                          const file = await cropAvatar(source);
 
-                          reader.readAsDataURL(file);
+                          if (file) {
+                            const reader = new FileReader();
+
+                            reader.onload = () => {
+                              setAvatars((prev) => ({
+                                ...prev,
+                                [selected.id]: reader.result as string,
+                              }));
+                            };
+
+                            reader.readAsDataURL(file);
+                          }
                         }
                       }}
                     />
@@ -1146,6 +1154,7 @@ export default function IDCardsPage() {
           </div>
         </div>
       </div>
+      {avatarCropperModal}
     </DashboardLayout>
   );
 }

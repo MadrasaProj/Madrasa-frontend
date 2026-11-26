@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useAvatarCropper } from "@/hooks/useAvatarCropper";
 import { ParentStudentSwitcher } from "@/components/ParentStudentSwitcher";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -52,6 +53,7 @@ export function ParentStudentProfileContent({
   });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const { crop: cropAvatar, modal: avatarCropperModal } = useAvatarCropper();
 
   const students = user?.accessibleStudents ?? [];
   const ids = user?.accessibleStudentIds ?? [];
@@ -154,6 +156,7 @@ export function ParentStudentProfileContent({
   const labelCls = "block text-xs font-semibold text-gray-600 mb-1.5";
 
   return (
+    <>
     <div className="">
       {/* Active student */}
       <motion.div
@@ -355,13 +358,15 @@ export function ParentStudentProfileContent({
                 disabled={photoMutation.isPending}
                 className="hidden"
                 onChange={async (e) => {
-                  const file = e.target.files?.[0];
+                  const source = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!source) return;
+                  const file = await cropAvatar(source);
                   if (!file) return;
                   const reader = new FileReader();
                   reader.onload = () => setAvatarPreview(reader.result as string);
                   reader.readAsDataURL(file);
                   await handleAvatarUpload(file);
-                  e.target.value = "";
                 }}
               />
               <Button
@@ -439,5 +444,7 @@ export function ParentStudentProfileContent({
         </div>
       </ResponsivePopover>
     </div>
+    {avatarCropperModal}
+    </>
   );
 }
