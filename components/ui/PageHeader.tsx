@@ -118,17 +118,19 @@ export function PageHeader({
               <Icon className="w-5 h-5 lg:w-6 lg:h-6 text-primary-600" />
             </div>
           )}
-          <div className="min-w-0 flex-1 flex items-center">
-            <h1 className="text-lg lg:text-xl font-bold text-gray-900 leading-tight truncate">
-              {title}
-            </h1>
-            {subtitle && (
-              <p className="text-xs lg:text-sm text-gray-500 truncate mt-0.5">
-                {subtitle}
-              </p>
-            )}
+          <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg lg:text-xl font-bold text-gray-900 leading-tight truncate">
+                {title}
+              </h1>
+              {subtitle && (
+                <p className="text-xs text-gray-500 truncate mt-0.5">
+                  {subtitle}
+                </p>
+              )}
+            </div>
             {action && (
-              <div className={cn("shrink-0 ml-auto", showActionOnMobile ? "block" : "hidden sm:block")}>
+              <div className={cn("shrink-0 sm:ml-3", showActionOnMobile ? "block" : "hidden sm:block")}>
                 {action}
               </div>
             )}

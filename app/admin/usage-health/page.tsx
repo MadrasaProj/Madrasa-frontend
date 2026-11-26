@@ -13,37 +13,25 @@ import { useAuthStore } from "@/store/auth";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Activity,
-  Award,
   AlertTriangle,
   AlertCircle,
-  CheckCircle2,
-  Clock,
   BookOpen,
   Calendar,
   Sparkles,
   UserCheck,
-  UserX,
   ChevronLeft,
   ChevronRight,
   Search,
-  Filter,
   ArrowUpDown,
   ExternalLink,
-  ShieldAlert,
   Layers,
   Zap,
   X,
-  ChevronDown,
-  ChevronUp,
   RefreshCw,
   Building2,
-  Users,
-  TrendingUp,
-  TrendingDown,
   Info,
   LogIn,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -277,55 +265,63 @@ function DetailDrawer({
   const navigate = useNavigate();
   const tierBadge = getTierBadge(client.scoring.healthTier);
 
+  // Prevent background scroll and handle Escape key
   useEffect(() => {
+    const origOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = origOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [onClose]);
 
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-black/30 backdrop-blur-xs animate-in fade-in"
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs animate-in fade-in"
         onClick={onClose}
       />
-      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-lg bg-white shadow-2xl border-l border-gray-100 flex flex-col animate-in slide-in-from-right duration-200">
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md sm:max-w-lg bg-white shadow-2xl border-l border-gray-100 flex flex-col animate-in slide-in-from-right duration-200 overflow-hidden">
         {/* Header */}
-        <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-base">
+        <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/70 shrink-0">
+          <div className="flex items-center gap-3 min-w-0 pr-2">
+            <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-base shrink-0">
               {client.name.charAt(0)}
             </div>
-            <div>
-              <h2 className="font-semibold text-gray-900 text-base leading-tight">{client.name}</h2>
+            <div className="min-w-0">
+              <h2 className="font-semibold text-gray-900 text-base leading-tight truncate">{client.name}</h2>
               <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
-                <span className="font-mono">{client.slug}</span>
+                <span className="font-mono text-[11px] text-gray-400">{client.slug}</span>
                 {client.city && <span>• {client.city}</span>}
               </div>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 shrink-0 cursor-pointer"
+            aria-label="Close drawer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
-          {/* Composite Score Banner */}
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 text-white shadow-sm">
+        {/* Content Body with clear right-side padding so scrollbars never crowd content */}
+        <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-5 space-y-5 overscroll-contain">
+          {/* 1. Hero Composite Health & CSM Strategy Card */}
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-gray-900 via-gray-850 to-gray-800 text-white shadow-md relative overflow-hidden">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs uppercase font-semibold text-gray-300 tracking-wider">
-                  Overall Usage Health
+                <p className="text-[11px] uppercase font-semibold text-gray-300 tracking-wider">
+                  Usage Health Index
                 </p>
                 <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-3xl font-extrabold">{client.scoring.overallScore}</span>
-                  <span className="text-sm text-gray-300 font-medium">/ 100</span>
+                  <span className="text-3xl sm:text-4xl font-extrabold">{client.scoring.overallScore}</span>
+                  <span className="text-xs text-gray-300 font-medium">/ 100 avg</span>
                 </div>
               </div>
               <span className={cn("px-3 py-1 rounded-full text-xs font-bold border", tierBadge.bg)}>
@@ -333,86 +329,102 @@ function DetailDrawer({
               </span>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-gray-700/60">
-              <p className="text-xs font-semibold text-primary-200">
-                Strategic Recommendation:
-              </p>
-              <p className="text-sm font-medium text-white mt-0.5">
+            <div className="mt-3.5 pt-3 border-t border-gray-700/60">
+              <div className="flex items-center gap-1.5 text-primary-300 text-xs font-bold">
+                <Zap className="w-3.5 h-3.5" />
+                Strategic CSM Recommendation:
+              </div>
+              <p className="text-sm font-semibold text-white mt-1 leading-snug">
                 {client.scoring.recommendation}
               </p>
-              <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+              <p className="text-xs text-gray-300 mt-1 leading-relaxed bg-white/5 p-2 rounded-lg border border-white/10">
                 {client.scoring.priorityAction}
               </p>
             </div>
+
+            <div className="mt-2.5 text-[10px] text-gray-400 flex items-center justify-between">
+              <span>Formula: Attendance (40%) + Ibadah (40%) + HW (20%)</span>
+              <span className="text-emerald-400 font-medium">100% Core Focus</span>
+            </div>
           </div>
 
-          {/* Account Manager / Assignee Section */}
-          <div className="p-4 rounded-2xl border border-gray-200 bg-white">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                Madrasa Assignee
+          {/* 2. Account Ownership & Accountability Card */}
+          <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-2xs space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-primary-600" />
+                Madrasa Account Assignee
               </span>
               <button
                 onClick={onOpenAssign}
-                className="text-xs font-semibold text-primary-600 hover:text-primary-700 underline"
+                className="text-xs font-semibold text-primary-600 hover:text-primary-700 underline cursor-pointer"
               >
                 Change Assignee
               </button>
             </div>
+
             {client.assignee ? (
-              <div className="flex items-center gap-3 mt-1">
-                <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-sm">
+              <div className="flex items-center gap-3 pt-1">
+                <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-sm shrink-0">
                   {client.assignee.name.charAt(0)}
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">{client.assignee.name}</p>
-                  <p className="text-xs text-gray-500">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{client.assignee.name}</p>
+                  <p className="text-xs text-gray-500 truncate">
                     {client.assignee.role?.replace(/_/g, " ")} • @{client.assignee.username}
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Unassigned. Every madrasa requires an internal manager for ownership.</span>
+                <div className="flex-1">
+                  <strong>Unassigned Madrasa:</strong> Assigning an internal staff member is required to ensure habit continuity and adoption outreach.
+                </div>
               </div>
             )}
           </div>
 
-          {/* Feature Breakdown 3 Pillars */}
+          {/* 3. Core Pedagogical Features (100% Score Weight) */}
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-              Core Feature Breakdown
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-gray-400" />
+                Core Pedagogical Pillars (100% Score Weight)
+              </h3>
+              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Determines Rating
+              </span>
+            </div>
 
-            {/* 1. Daily Attendance Pillar */}
-            <div className="p-4 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-2">
+            {/* Attendance Pillar (40%) */}
+            <div className="p-3.5 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 rounded-lg bg-blue-100 text-blue-700">
                     <Calendar className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-sm font-semibold text-gray-900">Daily Attendance</span>
-                    <p className="text-[11px] text-gray-500">Weight: 40% of overall score</p>
+                    <span className="text-xs font-bold text-gray-900">Daily Attendance</span>
+                    <p className="text-[10px] text-gray-500">Weight: 40% · Habit Reliability</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <span className={cn("text-base font-extrabold", getScoreColor(client.metrics.attendance.score))}>
                     {client.metrics.attendance.score}%
                   </span>
-                  <p className="text-[10px] text-gray-400">Adoption Score</p>
+                  <p className="text-[9px] text-gray-400">Score</p>
                 </div>
               </div>
 
-              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden mt-1">
+              <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                 <div
                   className={cn("h-full rounded-full transition-all duration-500", getProgressBarColor(client.metrics.attendance.score))}
                   style={{ width: `${client.metrics.attendance.score}%` }}
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-200/60 text-xs text-gray-600">
+              <div className="grid grid-cols-3 gap-2 pt-1.5 border-t border-gray-200/60 text-xs text-gray-600">
                 <div>
                   <span className="text-gray-400 block text-[10px]">30d Sessions</span>
                   <span className="font-semibold text-gray-900">{client.metrics.attendance.total30d}</span>
@@ -435,34 +447,34 @@ function DetailDrawer({
               </div>
             </div>
 
-            {/* 2. Ibadah Tracking Pillar */}
-            <div className="p-4 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-2">
+            {/* Ibadah Tracking Pillar (40%) */}
+            <div className="p-3.5 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-sm font-semibold text-gray-900">Ibadah Tracking</span>
-                    <p className="text-[11px] text-gray-500">Weight: 40% · Core Differentiator</p>
+                    <span className="text-xs font-bold text-gray-900">Ibadah Tracking</span>
+                    <p className="text-[10px] text-emerald-700 font-medium">Weight: 40% · Core Differentiator</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <span className={cn("text-base font-extrabold", getScoreColor(client.metrics.ibadah.score))}>
                     {client.metrics.ibadah.score}%
                   </span>
-                  <p className="text-[10px] text-gray-400">Adoption Score</p>
+                  <p className="text-[9px] text-gray-400">Score</p>
                 </div>
               </div>
 
-              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden mt-1">
+              <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                 <div
                   className={cn("h-full rounded-full transition-all duration-500", getProgressBarColor(client.metrics.ibadah.score))}
                   style={{ width: `${client.metrics.ibadah.score}%` }}
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-200/60 text-xs text-gray-600">
+              <div className="grid grid-cols-3 gap-2 pt-1.5 border-t border-gray-200/60 text-xs text-gray-600">
                 <div>
                   <span className="text-gray-400 block text-[10px]">30d Logs</span>
                   <span className="font-semibold text-gray-900">{client.metrics.ibadah.total30d}</span>
@@ -485,34 +497,34 @@ function DetailDrawer({
               </div>
             </div>
 
-            {/* 3. Homework Pillar */}
-            <div className="p-4 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-2">
+            {/* Homework Pillar (20%) */}
+            <div className="p-3.5 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 rounded-lg bg-purple-100 text-purple-700">
                     <BookOpen className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-sm font-semibold text-gray-900">Homework & Assignments</span>
-                    <p className="text-[11px] text-gray-500">Weight: 20% · Academic Rigor</p>
+                    <span className="text-xs font-bold text-gray-900">Homework & Assignments</span>
+                    <p className="text-[10px] text-gray-500">Weight: 20% · Academic Rigor</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <span className={cn("text-base font-extrabold", getScoreColor(client.metrics.homework.score))}>
                     {client.metrics.homework.score}%
                   </span>
-                  <p className="text-[10px] text-gray-400">Adoption Score</p>
+                  <p className="text-[9px] text-gray-400">Score</p>
                 </div>
               </div>
 
-              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden mt-1">
+              <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                 <div
                   className={cn("h-full rounded-full transition-all duration-500", getProgressBarColor(client.metrics.homework.score))}
                   style={{ width: `${client.metrics.homework.score}%` }}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200/60 text-xs text-gray-600">
+              <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-gray-200/60 text-xs text-gray-600">
                 <div>
                   <span className="text-gray-400 block text-[10px]">30d Assignments</span>
                   <span className="font-semibold text-gray-900">{client.metrics.homework.total30d}</span>
@@ -523,107 +535,102 @@ function DetailDrawer({
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* 4. Portal Login & Access Telemetry */}
-            <div className="p-4 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-teal-100 text-teal-700">
-                    <LogIn className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-gray-900">Portal Login & Access</span>
-                    <p className="text-[11px] text-gray-500">
-                      Informational Telemetry · 0% direct impact on rating
-                    </p>
-                  </div>
+          {/* 4. Operational Telemetry: Web Portal Access (0% Score Weight) */}
+          <div className="p-4 rounded-2xl border border-teal-200/80 bg-teal-50/30 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-teal-100 text-teal-700">
+                  <LogIn className="w-4 h-4" />
                 </div>
-                <div className="text-right">
-                  <span
-                    className={cn(
-                      "text-xs font-bold px-2 py-0.5 rounded-full border",
-                      client.metrics.portalLogin?.status === "FREQUENT"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : client.metrics.portalLogin?.status === "RECENT"
-                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                        : client.metrics.portalLogin?.status === "OCCASIONAL"
-                        ? "bg-amber-50 text-amber-700 border-amber-200"
-                        : client.metrics.portalLogin?.status === "DISABLED"
-                        ? "bg-rose-50 text-rose-700 border-rose-200"
-                        : "bg-gray-100 text-gray-600 border-gray-200"
-                    )}
-                  >
-                    {client.metrics.portalLogin?.status ?? "INACTIVE"}
-                  </span>
-                  <p className="text-[10px] text-gray-400 mt-0.5">
-                    {client.metrics.portalLogin?.isLoginEnabled ? "Login Enabled" : "Login Disabled"}
+                <div>
+                  <span className="text-xs font-bold text-gray-900">Portal Login & Access</span>
+                  <p className="text-[10px] text-teal-800 font-medium">
+                    Operational Telemetry · 0% Score Weight
                   </p>
                 </div>
               </div>
+              <span
+                className={cn(
+                  "text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                  client.metrics.portalLogin?.status === "FREQUENT"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : client.metrics.portalLogin?.status === "RECENT"
+                    ? "bg-blue-50 text-blue-700 border-blue-200"
+                    : client.metrics.portalLogin?.status === "OCCASIONAL"
+                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                    : client.metrics.portalLogin?.status === "DISABLED"
+                    ? "bg-rose-50 text-rose-700 border-rose-200"
+                    : "bg-gray-100 text-gray-600 border-gray-200"
+                )}
+              >
+                {client.metrics.portalLogin?.status ?? "INACTIVE"}
+              </span>
+            </div>
 
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-200/60 text-xs text-gray-600">
-                <div>
-                  <span className="text-gray-400 block text-[10px]">30d Logins</span>
-                  <span className="font-semibold text-gray-900">
-                    {client.metrics.portalLogin?.total30d ?? 0}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block text-[10px]">7d Activity</span>
-                  <span className="font-semibold text-gray-900">
-                    {client.metrics.portalLogin?.total7d ?? 0}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block text-[10px]">Last Portal Login</span>
-                  <span className="font-semibold text-gray-900">
-                    {client.metrics.portalLogin?.lastLoginAt
-                      ? new Date(client.metrics.portalLogin.lastLoginAt).toLocaleDateString("en-IN", {
-                          day: "2-digit",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : "Never"}
-                  </span>
-                </div>
+            <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 pt-1">
+              <div>
+                <span className="text-gray-400 block text-[10px]">30d Logins</span>
+                <span className="font-semibold text-gray-900">
+                  {client.metrics.portalLogin?.total30d ?? 0}
+                </span>
               </div>
+              <div>
+                <span className="text-gray-400 block text-[10px]">7d Activity</span>
+                <span className="font-semibold text-gray-900">
+                  {client.metrics.portalLogin?.total7d ?? 0}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-400 block text-[10px]">Last Active</span>
+                <span className="font-semibold text-gray-900">
+                  {client.metrics.portalLogin?.lastLoginAt
+                    ? new Date(client.metrics.portalLogin.lastLoginAt).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "Never"}
+                </span>
+              </div>
+            </div>
 
-              <p className="text-[10px] text-gray-500 italic mt-1">
-                Monitors web app engagement by admins, teachers, and parents. Excluded from overall score to ensure offline or localized teaching models aren&apos;t penalized.
-              </p>
+            <div className="p-2 rounded-lg bg-teal-100/50 border border-teal-200/50 text-[10px] text-teal-900 leading-relaxed">
+              <strong>Telemetry Guardrail:</strong> Tracks administrative portal access without altering pedagogical rating. Offline/in-person classes are never penalized.
             </div>
           </div>
 
-          {/* Quick Metrics Stats */}
-          <div className="grid grid-cols-3 gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-200 text-center">
+          {/* 5. Scale & Vital Stats */}
+          <div className="grid grid-cols-3 gap-3 p-3.5 rounded-2xl bg-gray-50 border border-gray-200 text-center">
             <div>
-              <p className="text-lg font-bold text-gray-900">{client.counts.students}</p>
-              <p className="text-[11px] text-gray-500">Students</p>
+              <p className="text-base font-bold text-gray-900">{client.counts.students}</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Students</p>
             </div>
             <div>
-              <p className="text-lg font-bold text-gray-900">{client.counts.classes}</p>
-              <p className="text-[11px] text-gray-500">Classes</p>
+              <p className="text-base font-bold text-gray-900">{client.counts.classes}</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Classes</p>
             </div>
             <div>
-              <p className="text-lg font-bold text-gray-900">{client.counts.teachers}</p>
-              <p className="text-[11px] text-gray-500">Teachers</p>
+              <p className="text-base font-bold text-gray-900">{client.counts.teachers}</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Teachers</p>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+        <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex items-center justify-between shrink-0">
           <button
             onClick={() => navigate(`/m/${client.slug}/admin`)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:text-primary-700 bg-white border border-gray-200 rounded-xl shadow-xs"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:text-primary-700 bg-white border border-gray-200 rounded-xl shadow-2xs cursor-pointer transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5" />
             Launch Portal
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-xl"
+            className="px-4 py-2 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-xl cursor-pointer transition-colors shadow-2xs"
           >
             Done
           </button>
@@ -641,7 +648,6 @@ export default function AdminUsageHealthPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Filters & State
-  // Default assigneeId to 'me' if not specified in searchParams
   const initialAssignee = searchParams.get("assigneeId") || "me";
   const [assigneeFilter, setAssigneeFilter] = useState<string>(initialAssignee);
   const [searchQuery, setSearchQuery] = useState<string>(searchParams.get("search") || "");
@@ -749,23 +755,24 @@ export default function AdminUsageHealthPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-7xl mx-auto pb-12">
-        {/* Header */}
+      {/* Root Container strictly constrained with zero horizontal overflow */}
+      <div className="space-y-6 max-w-7xl mx-auto pb-12 w-full min-w-0">
+        {/* Header with concise copy to protect right-side actions */}
         <PageHeader
-          title="Madrasa Usage & Adoption Matrix"
-          subtitle="Feature-wise usage scoring (Ibadah tracking, attendance & homeworks) with automated customer success signals and portfolio assignment."
+          title="Madrasa Usage Matrix"
+          subtitle="Feature adoption scoring & portfolio accountability"
           action={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => loadData()}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-xs transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-2xs transition-colors cursor-pointer"
               >
                 <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
                 Refresh
               </button>
               <button
                 onClick={() => navigate("/admin/madrasas")}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 shadow-xs transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 shadow-2xs transition-colors cursor-pointer"
               >
                 <Building2 className="w-3.5 h-3.5" />
                 Manage Madrasas
@@ -774,15 +781,15 @@ export default function AdminUsageHealthPage() {
           }
         />
 
-        {/* Unassigned Warning Banner (If any exist across platform) */}
+        {/* Unassigned Warning Banner */}
         {summary && summary.totalUnassignedCount > 0 && (
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0">
                 <AlertTriangle className="w-5 h-5" />
               </div>
-              <div>
-                <p className="text-sm font-bold text-amber-900">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-amber-900 truncate">
                   {summary.totalUnassignedCount} Madrasa{summary.totalUnassignedCount > 1 ? "s" : ""} without Assignee
                 </p>
                 <p className="text-xs text-amber-700">
@@ -795,41 +802,39 @@ export default function AdminUsageHealthPage() {
                 setAssigneeFilter("unassigned");
                 setPage(1);
               }}
-              className="px-3.5 py-1.5 text-xs font-bold text-amber-900 bg-amber-200/80 hover:bg-amber-200 rounded-xl transition-colors shrink-0"
+              className="px-3.5 py-1.5 text-xs font-bold text-amber-900 bg-amber-200/80 hover:bg-amber-200 rounded-xl transition-colors shrink-0 cursor-pointer"
             >
               Review Unassigned Madrasas
             </button>
           </div>
         )}
 
-        {/* Strategic Executive KPI Scorecards */}
+        {/* Strategic Executive KPI Scorecards - Clean responsive grid */}
         {summary && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3.5 w-full min-w-0">
             {/* 1. Overall Portfolio Health */}
-            <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs space-y-3">
+            <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-2xs space-y-2 min-w-0 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 truncate">
                   Usage Health Index
                 </span>
-                <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 shrink-0">
                   <Activity className="w-4 h-4" />
                 </span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className={cn("text-3xl font-extrabold", getScoreColor(summary.avgOverallScore))}>
+              <div className="flex items-baseline gap-1.5">
+                <span className={cn("text-2xl sm:text-3xl font-extrabold", getScoreColor(summary.avgOverallScore))}>
                   {summary.avgOverallScore}
                 </span>
                 <span className="text-xs font-semibold text-gray-400">/ 100 avg</span>
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
+              <div className="flex items-center gap-1 text-[10px] text-gray-500 flex-wrap pt-1 border-t border-gray-50">
                 <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
                   {summary.healthyCount} Champion
                 </span>
-                <span>•</span>
                 <span className="font-semibold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded">
                   {summary.moderateCount} Steady
                 </span>
-                <span>•</span>
                 <span className="font-semibold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded">
                   {summary.dormantCount + summary.atRiskCount} At Risk
                 </span>
@@ -837,99 +842,99 @@ export default function AdminUsageHealthPage() {
             </div>
 
             {/* 2. Daily Attendance Pillar */}
-            <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs space-y-3">
+            <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-2xs space-y-2 min-w-0 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                  Attendance Adoption
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 truncate">
+                  Attendance Habit
                 </span>
-                <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600 shrink-0">
                   <Calendar className="w-4 h-4" />
                 </span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className={cn("text-3xl font-extrabold", getScoreColor(summary.avgAttendanceScore))}>
+              <div className="flex items-baseline gap-1.5">
+                <span className={cn("text-2xl sm:text-3xl font-extrabold", getScoreColor(summary.avgAttendanceScore))}>
                   {summary.avgAttendanceScore}%
                 </span>
                 <span className="text-xs text-gray-400 font-medium">Daily Habit</span>
               </div>
-              <p className="text-[11px] text-gray-500">
-                Weighted 40% · Regular classroom attendance roll-call consistency.
+              <p className="text-[10px] text-gray-500 pt-1 border-t border-gray-50 truncate">
+                40% Weight · Roll-call consistency
               </p>
             </div>
 
             {/* 3. Ibadah Tracking Pillar */}
-            <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs space-y-3">
+            <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-2xs space-y-2 min-w-0 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 truncate">
                   Ibadah Tracking
                 </span>
-                <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+                <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 shrink-0">
                   <Sparkles className="w-4 h-4" />
                 </span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className={cn("text-3xl font-extrabold", getScoreColor(summary.avgIbadahScore))}>
+              <div className="flex items-baseline gap-1.5">
+                <span className={cn("text-2xl sm:text-3xl font-extrabold", getScoreColor(summary.avgIbadahScore))}>
                   {summary.avgIbadahScore}%
                 </span>
-                <span className="text-xs text-emerald-600 font-semibold">Core Differentiator</span>
+                <span className="text-[10px] text-emerald-600 font-semibold truncate">Core Differentiator</span>
               </div>
-              <p className="text-[11px] text-gray-500">
-                Weighted 40% · Prayer log frequency, consistency & active student reach.
+              <p className="text-[10px] text-gray-500 pt-1 border-t border-gray-50 truncate">
+                40% Weight · Prayer habit tracking
               </p>
             </div>
 
             {/* 4. Homework Pillar */}
-            <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs space-y-3">
+            <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-2xs space-y-2 min-w-0 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                  Homework Engagement
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 truncate">
+                  Homework Tasks
                 </span>
-                <span className="p-1.5 rounded-lg bg-purple-50 text-purple-600">
+                <span className="p-1.5 rounded-lg bg-purple-50 text-purple-600 shrink-0">
                   <BookOpen className="w-4 h-4" />
                 </span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className={cn("text-3xl font-extrabold", getScoreColor(summary.avgHomeworkScore))}>
+              <div className="flex items-baseline gap-1.5">
+                <span className={cn("text-2xl sm:text-3xl font-extrabold", getScoreColor(summary.avgHomeworkScore))}>
                   {summary.avgHomeworkScore}%
                 </span>
-                <span className="text-xs text-purple-600 font-semibold">Academic Rigor</span>
+                <span className="text-[10px] text-purple-600 font-semibold">Academic Rigor</span>
               </div>
-              <p className="text-[11px] text-gray-500">
-                Weighted 20% · Weekly class homework assignments created by teachers.
+              <p className="text-[10px] text-gray-500 pt-1 border-t border-gray-50 truncate">
+                20% Weight · Teacher assignments
               </p>
             </div>
 
             {/* 5. Portal Login Telemetry */}
-            <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs space-y-3">
+            <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-2xs space-y-2 min-w-0 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 truncate">
                   Portal Login Access
                 </span>
-                <span className="p-1.5 rounded-lg bg-teal-50 text-teal-600">
+                <span className="p-1.5 rounded-lg bg-teal-50 text-teal-600 shrink-0">
                   <LogIn className="w-4 h-4" />
                 </span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-teal-700">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl sm:text-3xl font-extrabold text-teal-700">
                   {summary.totalPortalLogins30d ?? 0}
                 </span>
-                <span className="text-xs text-teal-600 font-semibold">Logins (30d)</span>
+                <span className="text-[10px] text-teal-600 font-semibold truncate">30d Logins</span>
               </div>
-              <p className="text-[11px] text-gray-500">
-                {summary.activePortalsCount ?? 0} active portals · 0% direct impact on rating.
+              <p className="text-[10px] text-gray-500 pt-1 border-t border-gray-50 truncate">
+                {summary.activePortalsCount ?? 0} portals active · 0% score weight
               </p>
             </div>
           </div>
         )}
 
         {/* Filters & Controls */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs space-y-3">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-2xs space-y-3 w-full min-w-0">
           {/* Top Row: Assignee Quick Pills */}
           <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-gray-100">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs font-bold text-gray-600 mr-1 flex items-center gap-1">
                 <UserCheck className="w-3.5 h-3.5 text-primary-600" />
-                Assignee View:
+                Portfolio View:
               </span>
 
               {/* My Assigned (Default) */}
@@ -941,11 +946,11 @@ export default function AdminUsageHealthPage() {
                 className={cn(
                   "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5",
                   assigneeFilter === "me"
-                    ? "bg-primary-600 text-white shadow-xs"
+                    ? "bg-primary-600 text-white shadow-2xs"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 )}
               >
-                <span>⭐ Assigned to Me ({user?.name || "Current User"})</span>
+                <span>⭐ My Assigned ({user?.name || "Current User"})</span>
               </button>
 
               {/* All Madrasas */}
@@ -957,7 +962,7 @@ export default function AdminUsageHealthPage() {
                 className={cn(
                   "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer",
                   assigneeFilter === "all"
-                    ? "bg-primary-600 text-white shadow-xs"
+                    ? "bg-primary-600 text-white shadow-2xs"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 )}
               >
@@ -973,7 +978,7 @@ export default function AdminUsageHealthPage() {
                 className={cn(
                   "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1",
                   assigneeFilter === "unassigned"
-                    ? "bg-amber-600 text-white shadow-xs"
+                    ? "bg-amber-600 text-white shadow-2xs"
                     : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
                 )}
               >
@@ -1005,24 +1010,24 @@ export default function AdminUsageHealthPage() {
           </div>
 
           {/* Bottom Row: Search, Tier, Sorting & Page Size */}
-          <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center justify-between flex-wrap gap-2.5">
             {/* Search Input */}
-            <div className="relative min-w-[240px] flex-1 max-w-sm">
+            <div className="relative min-w-[200px] flex-1 max-w-sm">
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search by madrasa name, slug, city..."
+                placeholder="Search madrasa name, slug, city..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   setPage(1);
                 }}
-                className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-9 pr-3 py-1.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -1032,7 +1037,7 @@ export default function AdminUsageHealthPage() {
             <div className="flex items-center gap-2 flex-wrap">
               {/* Tier Filter */}
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-gray-500 font-medium">Health Tier:</span>
+                <span className="text-xs text-gray-500 font-medium">Tier:</span>
                 <select
                   value={tierFilter}
                   onChange={(e) => {
@@ -1051,7 +1056,7 @@ export default function AdminUsageHealthPage() {
 
               {/* Sort By */}
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-gray-500 font-medium">Sort By:</span>
+                <span className="text-xs text-gray-500 font-medium">Sort:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
@@ -1069,7 +1074,7 @@ export default function AdminUsageHealthPage() {
                 <button
                   onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
                   title={`Sort Order: ${sortOrder === "desc" ? "Descending" : "Ascending"}`}
-                  className="p-1.5 border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600 transition-colors"
+                  className="p-1.5 border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600 transition-colors cursor-pointer"
                 >
                   <ArrowUpDown className="w-3.5 h-3.5" />
                 </button>
@@ -1078,8 +1083,8 @@ export default function AdminUsageHealthPage() {
           </div>
         </div>
 
-        {/* Data Table */}
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-xs">
+        {/* Streamlined Directory Table with Sticky Right Actions Column */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-2xs w-full min-w-0">
           {loading ? (
             <div className="p-12 text-center space-y-3">
               <RefreshCw className="w-8 h-8 text-primary-500 animate-spin mx-auto" />
@@ -1097,26 +1102,25 @@ export default function AdminUsageHealthPage() {
               {assigneeFilter === "me" && (
                 <button
                   onClick={() => setAssigneeFilter("all")}
-                  className="mt-2 px-4 py-2 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-xl transition-colors"
+                  className="mt-2 px-4 py-2 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-xl transition-colors cursor-pointer"
                 >
                   View All Madrasas
                 </button>
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto w-full min-w-0">
+              <table className="w-full text-left border-collapse min-w-[780px]">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50/70 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                    <th className="py-3 px-4">Madrasa & Scope</th>
-                    <th className="py-3 px-4">Assignee</th>
-                    <th className="py-3 px-4 text-center">Overall Health</th>
-                    <th className="py-3 px-4">Ibadah Tracking</th>
-                    <th className="py-3 px-4">Attendance</th>
-                    <th className="py-3 px-4">Homework</th>
-                    <th className="py-3 px-4">Portal Login</th>
-                    <th className="py-3 px-4">Strategic Recommendation</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                  <tr className="border-b border-gray-100 bg-gray-50/80 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                    <th className="py-3 px-4 min-w-[190px]">Madrasa & Identity</th>
+                    <th className="py-3 px-3 min-w-[130px]">Account Assignee</th>
+                    <th className="py-3 px-3 min-w-[90px] text-center">Health Index</th>
+                    <th className="py-3 px-3 min-w-[200px]">Pedagogical Pillars (100%)</th>
+                    <th className="py-3 px-3 min-w-[110px]">Portal Telemetry</th>
+                    <th className="py-3 px-3 text-right min-w-[95px] sticky right-0 bg-gray-50/95 z-10 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.04)]">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-xs">
@@ -1125,155 +1129,152 @@ export default function AdminUsageHealthPage() {
                     return (
                       <tr
                         key={client.id}
-                        className="hover:bg-gray-50/60 transition-colors group cursor-pointer"
+                        className="hover:bg-gray-50/80 transition-colors group cursor-pointer"
                         onClick={() => setSelectedClientForDrawer(client)}
                       >
-                        {/* 1. Madrasa Info */}
+                        {/* 1. Madrasa Info & Strategy Tag */}
                         <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-primary-50 text-primary-700 font-bold flex items-center justify-center shrink-0 text-xs">
-                              {client.name.charAt(0)}
+                          <div className="flex items-start gap-2.5">
+                            <div className="relative shrink-0 mt-0.5">
+                              <div className="w-8 h-8 rounded-lg bg-primary-50 text-primary-700 font-bold flex items-center justify-center text-xs">
+                                {client.name.charAt(0)}
+                              </div>
+                              <span
+                                className={cn(
+                                  "absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white",
+                                  tierBadge.dot
+                                )}
+                              />
                             </div>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-gray-900 group-hover:text-primary-700 transition-colors">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-gray-900 group-hover:text-primary-700 transition-colors truncate max-w-[200px]">
                                 {client.name}
                               </p>
-                              <div className="flex items-center gap-2 mt-0.5 text-[11px] text-gray-400">
-                                <span>{client.counts.students} students</span>
+                              <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-400 truncate">
+                                <span className="font-mono text-[10px] text-gray-400">{client.slug}</span>
                                 <span>•</span>
-                                <span>{client.counts.classes} classes</span>
+                                <span>{client.counts.students} sts</span>
+                                <span>•</span>
+                                <span>{client.counts.classes} cls</span>
                                 {client.city && (
                                   <>
                                     <span>•</span>
-                                    <span>{client.city}</span>
+                                    <span className="truncate">{client.city}</span>
                                   </>
                                 )}
+                              </div>
+                              {/* Strategy Pill in identity column */}
+                              <div className="mt-1 flex items-center gap-1">
+                                <span
+                                  className="text-[10px] font-medium text-amber-900 bg-amber-50/90 border border-amber-200/70 px-1.5 py-0.5 rounded truncate max-w-[180px] block"
+                                  title={`${client.scoring.recommendation}: ${client.scoring.priorityAction}`}
+                                >
+                                  💡 {client.scoring.recommendation}
+                                </span>
                               </div>
                             </div>
                           </div>
                         </td>
 
                         {/* 2. Assignee */}
-                        <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                        <td className="py-3.5 px-3" onClick={(e) => e.stopPropagation()}>
                           {client.assignee ? (
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-[10px]">
+                            <button
+                              onClick={() => setSelectedClientForAssign(client)}
+                              className="flex items-center gap-2 hover:bg-gray-100/80 p-1 rounded-lg transition-colors text-left w-full cursor-pointer group/btn"
+                              title="Click to change account manager"
+                            >
+                              <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-[10px] shrink-0">
                                 {client.assignee.name.charAt(0)}
                               </div>
-                              <div className="min-w-0">
-                                <span className="font-semibold text-gray-800 text-xs truncate block">
+                              <div className="min-w-0 flex-1">
+                                <span className="font-semibold text-gray-800 text-xs truncate block group-hover/btn:text-primary-700">
                                   {client.assignee.name}
                                 </span>
                                 <span className="text-[10px] text-gray-400 truncate block">
                                   {client.assignee.role?.replace(/_/g, " ")}
                                 </span>
                               </div>
-                            </div>
+                            </button>
                           ) : (
                             <button
                               onClick={() => setSelectedClientForAssign(client)}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-colors"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer"
+                              title="Assign an account manager"
                             >
-                              <AlertCircle className="w-3 h-3 text-amber-600" />
-                              Assign Now
+                              <AlertCircle className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                              <span>Assign Manager</span>
                             </button>
                           )}
                         </td>
 
                         {/* 3. Overall Health Score */}
-                        <td className="py-3.5 px-4 text-center">
+                        <td className="py-3.5 px-3 text-center">
                           <div className="inline-flex flex-col items-center">
-                            <span className={cn("text-base font-extrabold", getScoreColor(client.scoring.overallScore))}>
+                            <span className={cn("text-base font-extrabold tracking-tight", getScoreColor(client.scoring.overallScore))}>
                               {client.scoring.overallScore}
+                              <span className="text-[10px] font-medium text-gray-400">/100</span>
                             </span>
-                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 border", tierBadge.bg)}>
+                            <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full mt-0.5 border", tierBadge.bg)}>
                               {tierBadge.label}
                             </span>
                           </div>
                         </td>
 
-                        {/* 4. Ibadah Tracking Pillar */}
-                        <td className="py-3.5 px-4 min-w-[130px]">
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-[11px]">
-                              <span className={cn("font-bold", getScoreColor(client.metrics.ibadah.score))}>
-                                {client.metrics.ibadah.score}%
-                              </span>
-                              <span className="text-gray-400 text-[10px]">
-                                {client.metrics.ibadah.total30d} logs (30d)
-                              </span>
-                            </div>
-                            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className={cn("h-full rounded-full", getProgressBarColor(client.metrics.ibadah.score))}
-                                style={{ width: `${client.metrics.ibadah.score}%` }}
-                              />
-                            </div>
-                            <p className="text-[10px] text-gray-400">
-                              {client.metrics.ibadah.lastDate
-                                ? `Last: ${new Date(client.metrics.ibadah.lastDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`
-                                : "No logs"}
-                            </p>
-                          </div>
-                        </td>
-
-                        {/* 5. Attendance Pillar */}
-                        <td className="py-3.5 px-4 min-w-[130px]">
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-[11px]">
-                              <span className={cn("font-bold", getScoreColor(client.metrics.attendance.score))}>
+                        {/* 4. Pedagogical Pillars (Clean 3-Chip Comparative View) */}
+                        <td className="py-3.5 px-3">
+                          <div className="grid grid-cols-3 gap-1.5 text-center min-w-[190px]">
+                            {/* Attendance */}
+                            <div className="p-1 rounded-lg bg-blue-50/70 border border-blue-100/80">
+                              <div className="flex items-center justify-center gap-0.5 text-[9px] text-blue-700 font-semibold truncate">
+                                <Calendar className="w-2.5 h-2.5 shrink-0" />
+                                <span>Att (40%)</span>
+                              </div>
+                              <div className="text-xs font-extrabold text-blue-900 mt-0.5">
                                 {client.metrics.attendance.score}%
-                              </span>
-                              <span className="text-gray-400 text-[10px]">
-                                {client.metrics.attendance.total30d} sessions
-                              </span>
+                              </div>
+                              <div className="text-[9px] text-blue-600/90 truncate">
+                                {client.metrics.attendance.total30d} sess
+                              </div>
                             </div>
-                            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className={cn("h-full rounded-full", getProgressBarColor(client.metrics.attendance.score))}
-                                style={{ width: `${client.metrics.attendance.score}%` }}
-                              />
-                            </div>
-                            <p className="text-[10px] text-gray-400">
-                              {client.metrics.attendance.lastDate
-                                ? `Last: ${new Date(client.metrics.attendance.lastDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`
-                                : "No attendance"}
-                            </p>
-                          </div>
-                        </td>
 
-                        {/* 6. Homework Pillar */}
-                        <td className="py-3.5 px-4 min-w-[120px]">
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-[11px]">
-                              <span className={cn("font-bold", getScoreColor(client.metrics.homework.score))}>
+                            {/* Ibadah */}
+                            <div className="p-1 rounded-lg bg-emerald-50/70 border border-emerald-100/80">
+                              <div className="flex items-center justify-center gap-0.5 text-[9px] text-emerald-700 font-semibold truncate">
+                                <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                                <span>Iba (40%)</span>
+                              </div>
+                              <div className="text-xs font-extrabold text-emerald-900 mt-0.5">
+                                {client.metrics.ibadah.score}%
+                              </div>
+                              <div className="text-[9px] text-emerald-600/90 truncate">
+                                {client.metrics.ibadah.total30d} logs
+                              </div>
+                            </div>
+
+                            {/* Homework */}
+                            <div className="p-1 rounded-lg bg-purple-50/70 border border-purple-100/80">
+                              <div className="flex items-center justify-center gap-0.5 text-[9px] text-purple-700 font-semibold truncate">
+                                <BookOpen className="w-2.5 h-2.5 shrink-0" />
+                                <span>HW (20%)</span>
+                              </div>
+                              <div className="text-xs font-extrabold text-purple-900 mt-0.5">
                                 {client.metrics.homework.score}%
-                              </span>
-                              <span className="text-gray-400 text-[10px]">
-                                {client.metrics.homework.total30d} assigned
-                              </span>
+                              </div>
+                              <div className="text-[9px] text-purple-600/90 truncate">
+                                {client.metrics.homework.total30d} tasks
+                              </div>
                             </div>
-                            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className={cn("h-full rounded-full", getProgressBarColor(client.metrics.homework.score))}
-                                style={{ width: `${client.metrics.homework.score}%` }}
-                              />
-                            </div>
-                            <p className="text-[10px] text-gray-400">
-                              {client.metrics.homework.total30d > 0
-                                ? `${client.metrics.homework.total30d} assignments/30d`
-                                : "Zero assignments"}
-                            </p>
                           </div>
                         </td>
 
-                        {/* 7. Portal Login Metrics (Informational, 0% direct impact) */}
-                        <td className="py-3.5 px-4 min-w-[125px]">
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-[11px]">
+                        {/* 5. Portal Telemetry (0% Rating Weight) */}
+                        <td className="py-3.5 px-3">
+                          <div className="space-y-0.5 min-w-[95px]">
+                            <div className="flex items-center gap-1.5">
                               <span
                                 className={cn(
-                                  "font-bold text-[10px] px-1.5 py-0.5 rounded border",
+                                  "font-bold text-[9px] px-1.5 py-0.5 rounded-sm border shrink-0",
                                   client.metrics.portalLogin?.status === "FREQUENT"
                                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                     : client.metrics.portalLogin?.status === "RECENT"
@@ -1287,52 +1288,45 @@ export default function AdminUsageHealthPage() {
                               >
                                 {client.metrics.portalLogin?.status ?? "INACTIVE"}
                               </span>
-                              <span className="text-gray-400 text-[10px]">
+                              <span className="text-[10px] font-semibold text-gray-700 truncate">
                                 {client.metrics.portalLogin?.total30d ?? 0} logins
                               </span>
                             </div>
-                            <p className="text-[10px] text-gray-500">
+                            <p className="text-[10px] text-gray-400 truncate">
                               {client.metrics.portalLogin?.lastLoginAt
                                 ? `Last: ${new Date(client.metrics.portalLogin.lastLoginAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`
-                                : "Never"}
+                                : "No portal logins"}
                             </p>
                             <span className="text-[9px] text-gray-400 block font-mono">
-                              (0% rating weight)
+                              (0% weight)
                             </span>
                           </div>
                         </td>
 
-                        {/* 7. Strategic Recommendation */}
-                        <td className="py-3.5 px-4 max-w-[200px]">
-                          <p className="font-semibold text-gray-800 text-[11px] truncate">
-                            {client.scoring.recommendation}
-                          </p>
-                          <p className="text-[10px] text-gray-500 line-clamp-1">
-                            {client.scoring.priorityAction}
-                          </p>
-                        </td>
-
-                        {/* 8. Actions */}
-                        <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => setSelectedClientForAssign(client)}
-                              title="Assign or reassign owner"
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                            >
-                              <UserCheck className="w-4 h-4" />
-                            </button>
+                        {/* 6. Sticky Actions Column - Perfectly pinned to the right edge */}
+                        <td
+                          className="py-3.5 px-3 text-right sticky right-0 bg-white group-hover:bg-gray-50/95 z-10 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.04)]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => setSelectedClientForDrawer(client)}
                               title="View deep-dive telemetry"
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                              className="p-1.5 rounded-lg text-primary-600 hover:text-primary-700 hover:bg-primary-50 transition-colors cursor-pointer"
                             >
                               <Info className="w-4 h-4" />
                             </button>
                             <button
+                              onClick={() => setSelectedClientForAssign(client)}
+                              title="Assign or reassign owner"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                            >
+                              <UserCheck className="w-4 h-4" />
+                            </button>
+                            <button
                               onClick={() => navigate(`/m/${client.slug}/admin`)}
                               title="Open Madrasa Portal"
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
                             >
                               <ExternalLink className="w-4 h-4" />
                             </button>
@@ -1348,7 +1342,7 @@ export default function AdminUsageHealthPage() {
 
           {/* Pagination Controls */}
           {pagination && pagination.total > 0 && (
-            <div className="p-4 border-t border-gray-100 flex items-center justify-between flex-wrap gap-3 text-xs bg-gray-50/50">
+            <div className="p-3.5 sm:p-4 border-t border-gray-100 flex items-center justify-between flex-wrap gap-3 text-xs bg-gray-50/50">
               <div className="flex items-center gap-2 text-gray-500 font-medium">
                 <span>
                   Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
@@ -1356,7 +1350,7 @@ export default function AdminUsageHealthPage() {
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
-                  Rows per page:
+                  Rows:
                   <select
                     value={limit}
                     onChange={(e) => {
@@ -1377,7 +1371,7 @@ export default function AdminUsageHealthPage() {
                 <button
                   disabled={pagination.page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="px-2.5 py-1.5 border border-gray-200 rounded-lg bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                  className="px-2.5 py-1.5 border border-gray-200 rounded-lg bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -1389,7 +1383,7 @@ export default function AdminUsageHealthPage() {
                 <button
                   disabled={pagination.page >= pagination.totalPages}
                   onClick={() => setPage((p) => p + 1)}
-                  className="px-2.5 py-1.5 border border-gray-200 rounded-lg bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                  className="px-2.5 py-1.5 border border-gray-200 rounded-lg bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>

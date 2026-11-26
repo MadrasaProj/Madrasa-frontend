@@ -537,9 +537,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-    <div className="min-h-[100svh] bg-primary-50/50 overflow-visible">
+    <div className="min-h-[100svh] bg-primary-50/50 overflow-x-clip min-w-0 max-w-full">
       <Sidebar isOpen={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} />
-      <div className="lg:pl-64 flex flex-col min-h-[100svh]">
+      <div className="lg:pl-64 flex flex-col min-h-[100svh] min-w-0 max-w-full overflow-x-hidden">
         <SuperAdminViewingBanner />
 
         {/* ── Desktop top bar ────────────────────────────────── */}
@@ -571,7 +571,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header> */}
 
-        <main className="w-full max-w-7xl 2xl:max-w-[1720px] mx-auto *:p-3 sm:*:p-4 lg:*:p-6 pb-28 lg:pb-8 flex-1 transition-all">{children}</main>
+        <main className="w-full max-w-7xl 2xl:max-w-[1720px] mx-auto *:p-3 sm:*:p-4 lg:*:p-6 pb-28 lg:pb-8 flex-1 transition-all min-w-0 max-w-full overflow-x-hidden">{children}</main>
       </div>
     </div>
       <BottomNav onOpenMenu={() => setIsMobileSidebarOpen(true)} />
