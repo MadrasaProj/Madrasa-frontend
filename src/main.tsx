@@ -9,8 +9,12 @@ import {
   markPwaAsInstalled,
   checkPwaInstalledAsync,
 } from "@/lib/pwa";
+import { initMobileNativeExperience } from "@/lib/mobile-zoom-lock";
 import "../app/globals.css";
 import "@leafer-in/export";
+
+// Initialize mobile native touch & zoom lock
+initMobileNativeExperience();
 
 // Capture PWA install prompt globally and synchronize install status
 if (typeof window !== "undefined") {

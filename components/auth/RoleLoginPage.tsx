@@ -368,11 +368,11 @@ export default function RoleLoginPage({
   };
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-x-hidden bg-[#f8fbf7] px-5 py-10">
+    <div className="relative flex min-h-[100dvh] flex-col items-center justify-between sm:justify-center overflow-x-hidden bg-[#f8fbf7] px-0 sm:px-5 py-0 sm:py-10">
       <GridPattern className="opacity-70" />
       <div aria-hidden="true" className="pointer-events-none absolute -left-28 -top-28 h-72 w-72 rounded-full bg-primary-200/30 blur-3xl" />
       {/* <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -right-24 h-80 w-80 rounded-full bg-teal-200/30 blur-3xl" /> */}
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-[max(1rem,env(safe-area-inset-top))] right-4 z-50">
         <LanguageSwitcher />
       </div>
 
@@ -380,19 +380,26 @@ export default function RoleLoginPage({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="relative z-10 w-full max-w-md"
+        className="relative z-10 flex min-h-[100dvh] sm:min-h-0 w-full max-w-md flex-col justify-between sm:justify-center sm:my-auto"
       >
-        <div className="mb-7 text-center">
-          <img src={meta.image} alt="" className="mx-auto mt-4 h-36 w-36 object-contain " />
- 
+        <div className="mb-4 sm:mb-7 px-6 pt-10 sm:pt-0 sm:px-0 text-center shrink-0">
+          <img src={meta.image} alt="" className="mx-auto mt-2 sm:mt-4 h-28 w-28 sm:h-36 sm:w-36 object-contain" />
 
-            <h1 className=" text-[1.8rem] font-semibold leading-tight tracking-[-0.04em] ">{meta.title} to   <span className="bg-gradient-to-r text-transparent from-primary to-primary-400 bg-clip-text font-black">{madrasaName}</span></h1>
-          <p className="mx-auto mt-0 max-w-xs text-sm leading-6 text-slate-500">{meta.subtitle}</p>
-        
+          <h1 className="mt-3 text-2xl sm:text-[1.8rem] font-semibold leading-tight tracking-[-0.04em]">
+            {meta.title} to{" "}
+            <span className="bg-gradient-to-r text-transparent from-primary to-primary-400 bg-clip-text font-black">
+              {madrasaName}
+            </span>
+          </h1>
+          <p className="mx-auto mt-1 max-w-xs text-xs sm:text-sm leading-relaxed text-slate-500">
+            {meta.subtitle}
+          </p>
         </div>
 
-        <div className="h-[170px] sm:hidden"></div>
-        <div style={{boxShadow:'#dcf2ec 0px -5px 32px -6px'}} className="  bg-white p-6 py-10 fixed bottom-0 left-0 w-full rounded-t-4xl sm:static sm:w-full sm:rounded-3xl sm:border sm:border-gray-100 sm:p-8 sm:mt-2  ">
+        <div
+          style={{ boxShadow: "#dcf2ec 0px -5px 32px -6px" }}
+          className="w-full mt-auto sm:mt-2 bg-white px-6 py-8 pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))] sm:p-8 rounded-t-4xl sm:rounded-3xl sm:border sm:border-gray-100 shrink-0"
+        >
           <form onSubmit={handleLogin} className="space-y-4">
             {type !== "PARENT" && (
               <div>
