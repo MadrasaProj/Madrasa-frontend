@@ -12,7 +12,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { roleHomePath } from "@/lib/tenant-routing";
 import { clearTenantSlug, getTenantSlugAsync, getTenantSlugSync, saveTenantSlug } from "@/lib/slug-storage";
 import { getStoredSessionsSync, useAuthStore, type UserRole } from "@/store/auth";
-import PwaInstallButton from "@/components/PwaInstallButton";
 
 type LandingRole = "parent" | "teacher" | "admin";
 
@@ -224,10 +223,7 @@ export default function TwaLandingPage() {
         </div>
       </section>
       <section aria-labelledby="desktop-onboarding-title" className="hidden px-8 py-10 lg:block">
-        <div className="mb-8 text-center flex flex-col items-center">
-          <div className="mb-4">
-            <PwaInstallButton variant="pill" />
-          </div>
+        <div className="mb-8 text-center">
           <h2 id="desktop-onboarding-title" className="text-2xl font-semibold tracking-tight text-primary-900">Get started</h2>
           <p className="mt-2 text-sm text-slate-500">Select your role and enter your madrasa's slug to continue.</p>
         </div>

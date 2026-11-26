@@ -9,6 +9,11 @@ export default function PwaInstallBanner() {
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
+  const isMobile =
+    typeof window !== "undefined" &&
+    (window.matchMedia?.("(pointer: coarse)").matches ||
+      window.matchMedia?.("(max-width: 1024px)").matches);
+
   useEffect(() => {
     try {
       if (sessionStorage.getItem("pwa_banner_dismissed") === "true") {
@@ -18,13 +23,14 @@ export default function PwaInstallBanner() {
   }, []);
 
   useEffect(() => {
-    if (isInstalled || dismissed || !installPrompt) {
+    // Only open on mobile devices where installPrompt is available and not dismissed
+    if (!isMobile || isInstalled || dismissed || !installPrompt) {
       setOpen(false);
       return;
     }
 
-    setOpen(!isInstalled && !dismissed && Boolean(installPrompt));
-  }, [isInstalled, dismissed, installPrompt]);
+    setOpen(true);
+  }, [isMobile, isInstalled, dismissed, installPrompt]);
 
   const close = () => {
     setDismissed(true);
@@ -43,8 +49,8 @@ export default function PwaInstallBanner() {
     }
   };
 
-  // If already installed, dismissed, or no install prompt available, never render
-  if (isInstalled || dismissed || !installPrompt) return null;
+  // Strictly mobile-only: never render on desktop
+  if (!isMobile || isInstalled || dismissed || !installPrompt) return null;
 
   return (
     <ResponsivePopover

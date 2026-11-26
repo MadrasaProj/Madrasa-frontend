@@ -4,7 +4,7 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
-import { ResultCardPoster } from "@/components/poster/ResultCardPoster";
+import { ResultCardPoster } from "@/components/poster/ResultCardPoster.tsx";
 import { getTopRankers, RankIndividualSvgPoster, RankSvgPoster } from "@/components/poster/SvgPoster";
 import {
   type ClassReport, type ClassReportRow, type ResultStatus, type TotalGrade,

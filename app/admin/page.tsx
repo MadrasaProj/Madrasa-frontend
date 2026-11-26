@@ -246,7 +246,7 @@ export default function AdminDashboard() {
     <DashboardLayout>
       <div className="space-y-6 sm:space-y-8 lg:mt-10 lg:space-y-10">
         <AdminWelcomeHeader platform={isSuperAdminPlatform} />
-        <PwaInstallButton variant="banner" className="shadow-none" />
+        <PwaInstallButton variant="banner" className="lg:hidden shadow-none" />
         {isSuperAdminPlatform ? <PlatformOverview /> : <MadrasaAdminDashboard />}
       </div>
     </DashboardLayout>

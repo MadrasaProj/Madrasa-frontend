@@ -7,7 +7,6 @@ import { useLanguageStore } from "@/store/language";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { ClassPicker } from "@/components/ui/ClassPicker";
 import { StudentAvatar } from "@/components/teacher/StudentAvatar";
-import PwaInstallButton from "@/components/PwaInstallButton";
 
 export function PageHeaderSwitchers({ hideChevron = false }: { hideChevron?: boolean }) {
   const { pathname } = useLocation();
@@ -135,9 +134,6 @@ export function PageHeader({
             )}
           </div>
           {switcher ?? <PageHeaderSwitchers hideChevron={hideSwitcherChevron} />}
-          <div className="hidden lg:block shrink-0">
-            <PwaInstallButton variant="pill" />
-          </div>
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ClassResultTable } from "@/components/exam/ClassResultTable";
-import { ResultCardPoster } from "@/components/poster/ResultCardPoster";
+import { ResultCardPoster } from "@/components/poster/ResultCardPoster.tsx";
 import { getTopRankers, RankIndividualSvgPoster, RankSvgPoster, ResultAnnouncementSvgPoster } from "@/components/poster/SvgPoster";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 import {

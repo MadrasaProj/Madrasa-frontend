@@ -52,6 +52,11 @@ export default function PwaInstallButton({
     return null;
   }
 
+  // Large home-screen cards and banners are mobile UI patterns; never render on desktop
+  if ((variant === "card" || variant === "banner") && isDesktop) {
+    return null;
+  }
+
   return (
     <>
       {(variant === "card" || variant === "banner") && (

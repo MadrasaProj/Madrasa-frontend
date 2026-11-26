@@ -89,8 +89,8 @@ export default function CommitteeDashboard() {
         </div>
       </motion.div>
 
-      {/* PWA Install Banner */}
-      <PwaInstallButton variant="banner" className="mb-5" />
+      {/* PWA Install Banner (mobile only) */}
+      <PwaInstallButton variant="banner" className="lg:hidden mb-5" />
 
       {d.loading && (
         <div className="space-y-3 mb-5">

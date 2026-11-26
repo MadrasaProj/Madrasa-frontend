@@ -343,8 +343,8 @@ export default function TeacherDashboard() {
           <PageHeaderSwitchers />
         </header>
 
-        {/* PWA Install Banner */}
-        <PwaInstallButton variant="banner" className="mb-2" />
+        {/* PWA Install Banner (mobile only) */}
+        <PwaInstallButton variant="banner" className="lg:hidden mb-2" />
  
         {/* Ibadah Card */}
         <section

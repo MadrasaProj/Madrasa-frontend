@@ -61,7 +61,6 @@ import { useClientConfig } from "@/lib/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { ButtonGroup } from "./ui/button-group";
-import PwaInstallButton from "@/components/PwaInstallButton";
 
 type NavKey =
   | "dashboard"
@@ -972,11 +971,6 @@ export function Sidebar({
             </div>
           )}
         </nav>
-
-        {/* ── Compact Sidebar Install App Button ── */}
-        <div className="px-4 py-2 border-t border-gray-100 bg-emerald-50/20 shrink-0">
-          <PwaInstallButton variant="compact" />
-        </div>
 
         {/* ── Mobile sidebar utilities ── */}
         <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 space-y-1 shrink-0">
