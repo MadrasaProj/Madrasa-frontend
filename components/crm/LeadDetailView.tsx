@@ -64,6 +64,7 @@ interface LeadDetailViewProps {
   onDeleteActivity: (timelineId: string) => Promise<void>;
   onProvisionTrial: () => Promise<void>;
   onConvertToMadrasa: (dto: { subdomain: string; adminName: string; adminIdentifier: string; adminPassword: string; amountPaid: number; commissionPercentage: number }) => Promise<void>;
+  onCreateMadrasa?: () => void;
   onDeleteLead?: (leadId: string) => Promise<void>;
 }
 
@@ -85,6 +86,7 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({
   onDeleteActivity,
   onProvisionTrial,
   onConvertToMadrasa,
+  onCreateMadrasa,
   onDeleteLead,
 }) => {
   // Quick Log Note State
@@ -614,6 +616,16 @@ export const LeadDetailView: React.FC<LeadDetailViewProps> = ({
               >
                 <Play className="w-3.5 h-3.5" />
                 <span>{lead.status === "LOGGED_IN" ? "Trial Active" : "Launch Trial"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onCreateMadrasa}
+                disabled={actionLoading}
+                className="min-h-[34px] sm:min-h-[36px] px-3.5 py-1.5 text-xs sm:text-sm font-bold rounded-xl border border-emerald-300 bg-emerald-600 hover:bg-emerald-700 text-white transition-all active:scale-95 flex items-center gap-1.5 shadow-2xs disabled:opacity-40"
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Create Madrasa</span>
               </button>
 
               <button

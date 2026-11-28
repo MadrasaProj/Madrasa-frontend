@@ -47,6 +47,7 @@ import {
   type LeadFormData,
 } from "@/components/crm/LeadFormDrawer";
 import { LeadQuickAssignModal } from "@/components/crm/LeadQuickAssignModal";
+import { CreateMadrasaPopover } from "@/components/crm/CreateMadrasaPopover";
 import {
   LeadBulkModal,
   type BulkModalType,
@@ -122,6 +123,7 @@ export default function LeadsCrmPage() {
 
   // Modals & Drawers
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const [showCreateMadrasa, setShowCreateMadrasa] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showQuickAssignModal, setShowQuickAssignModal] = useState(false);
@@ -680,6 +682,12 @@ export default function LeadsCrmPage() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleMadrasaCreated = async () => {
+    if (!selectedLead) return;
+    await loadLeadDetail(selectedLead.id);
+    await loadData(true);
   };
 
   // Bulk Actions
@@ -1309,6 +1317,7 @@ export default function LeadsCrmPage() {
                   onDeleteActivity={handleDeleteActivity}
                   onProvisionTrial={handleProvisionTrial}
                   onConvertToMadrasa={handleConvertToMadrasa}
+                  onCreateMadrasa={() => setShowCreateMadrasa(true)}
                   onDeleteLead={handleDeleteLead}
                 />
               </div>
@@ -1432,6 +1441,7 @@ export default function LeadsCrmPage() {
                       onDeleteActivity={handleDeleteActivity}
                       onProvisionTrial={handleProvisionTrial}
                       onConvertToMadrasa={handleConvertToMadrasa}
+                  onCreateMadrasa={() => setShowCreateMadrasa(true)}
                       onDeleteLead={handleDeleteLead}
                     />
                   )}
@@ -1605,6 +1615,16 @@ export default function LeadsCrmPage() {
           }}
           config={importConfig}
         />
+
+        {selectedLead && accessToken && (
+          <CreateMadrasaPopover
+            open={showCreateMadrasa}
+            onOpenChange={setShowCreateMadrasa}
+            lead={selectedLead}
+            token={accessToken}
+            onCreated={handleMadrasaCreated}
+          />
+        )}
       </div>
     </DashboardLayout>
   );

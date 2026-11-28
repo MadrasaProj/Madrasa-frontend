@@ -336,6 +336,105 @@ export function convertLead(leadId: string, dto: { subdomain: string; adminName:
   return mutateJson<any>("POST", `/crm/leads/${leadId}/convert`, dto, token);
 }
 
+// ── Create Madrasa from Lead ────────────────────────────────────────────────
+
+export interface PulledParentData {
+  studentName?: string;
+  admissionNo?: string;
+  parentName?: string;
+  parentPhone: string;
+  parentEmail?: string;
+  password?: string;
+}
+
+export interface PullLeadDataResponse {
+  source: string;
+  pulledAt: string;
+  lead: {
+    id: string;
+    name: string;
+    place?: string;
+    district?: string;
+    studentCount?: number;
+    teacherCount?: number;
+  };
+  madrasa: {
+    name: string;
+    slug: string;
+    city?: string;
+    state?: string;
+    address?: string;
+  };
+  admin: {
+    name?: string;
+    identifier?: string;
+    phone?: string;
+    email?: string;
+    password?: string;
+  };
+  committee: {
+    name?: string;
+    role?: string;
+    phone?: string;
+    email?: string;
+    username?: string;
+    password?: string;
+  };
+  parentData: PulledParentData[];
+}
+
+export interface CreateMadrasaFromLeadPayload {
+  name: string;
+  slug: string;
+  arabicName?: string;
+  city?: string;
+  state?: string;
+  attendanceMode?: "CLASS_BASED" | "PERIOD_BASED";
+  status?: "ACTIVE" | "TRIAL" | "SUSPENDED" | "CANCELLED";
+  isLoginEnabled?: boolean;
+  educationSystemId?: string;
+  adminName?: string;
+  adminIdentifier: string;
+  adminPassword?: string;
+  committieUsername?: string;
+  committiePassword?: string;
+  parentData?: PulledParentData[];
+}
+
+export interface CreateMadrasaCredentials {
+  admin: { name: string; identifier: string; password: string };
+  committee: { username: string; password: string };
+  parents: Array<{
+    studentName: string;
+    parentName: string;
+    parentPhone: string;
+    password: string;
+  }>;
+}
+
+export interface CreateMadrasaFromLeadResponse {
+  client: { id: string; name: string; slug: string; subdomain?: string };
+  credentials: CreateMadrasaCredentials;
+  whatsappMessage: string;
+}
+
+export function pullLeadData(leadId: string, token: string) {
+  return mutateJson<PullLeadDataResponse>("POST", `/crm/leads/${leadId}/pull-data`, null, token);
+}
+
+export function createMadrasaFromLead(
+  leadId: string,
+  dto: CreateMadrasaFromLeadPayload,
+  token: string,
+) {
+  return mutateJson<CreateMadrasaFromLeadResponse>(
+    "POST",
+    `/crm/leads/${leadId}/create-madrasa`,
+    dto,
+    token,
+  );
+}
+
 // ── Tasks ─────────────────────────────────────────────────────────────────────
 
 export interface TaskItem {
